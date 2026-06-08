@@ -16,7 +16,7 @@ def load_alerts(json_path):
     try:
         with open(p) as f:
             return json.load(f)
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         return None
 
 
@@ -68,7 +68,7 @@ def enrich_alerts(json_path, api_key):
         return None
     malicious_list = []
     for alert_dict in file:
-        if not is_public_ip["ip"]:
+        if not is_public_ip(alert_dict["ip"]):
             continue
         value = is_malicious(alert_dict["ip"], api_key)
         if value is True:

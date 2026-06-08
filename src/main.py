@@ -38,12 +38,6 @@ def main():
 
     generate_report(alerts, malicious_alerts, "data/report.txt")
 
-    # print("report:\n")
-    # with open("data/report.txt") as file:
-    #     report = file.read()
-    #     print(report)
-    #
-
 
 if __name__ == "__main__":
     main()
