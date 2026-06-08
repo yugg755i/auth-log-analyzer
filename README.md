@@ -18,6 +18,9 @@ The goal of this project was to practice Python, log parsing, basic detection en
 * Check public IP reputation using the AbuseIPDB API
 * Export parsed and enriched findings to JSON
 * Generate a text-based investigation report
+* Store parsed alerts in SQLite
+* Command-line interface using argparse
+* Export alerts to CSV
 
 ## Project Structure
 
@@ -27,9 +30,16 @@ src/
 ├── detector.py
 ├── enrichment.py
 ├── reporter.py
+├── database.py
 ├── utils.py
 └── main.py
 ```
+Generated output:
+- alerts.db
+- parsed_alerts.json
+- malicious_alerts.json
+- alerts.csv
+- report.txt
 
 ## Installation
 
@@ -48,31 +58,48 @@ ABUSEIPDB_API_KEY=YOUR_API_KEY
 
 ## Usage
 
+Show top source IPs:
+
 ```bash
-python src/main.py
+python src/main.py --top-ips
 ```
+Detect brute-force activity:
 
-Generated output:
+```bash
+python src/main.py --bruteforce
+```
+Show malicious alerts:
 
-* `data/parsed_alerts.json`
-* `data/malicious_alerts.json`
-* `data/report.txt`
+```bash
+python src/main.py --malicious-alerts
+```
+Export alerts to CSV:
+
+```bash
+python src/main.py --export-csv
+```
+Generate a report:
+
+```bash
+python src/main.py --report
+```
 
 ## Technologies Used
 
-* Python
-* Regular Expressions (`re`)
-* Requests
-* JSON
-* Pathlib
-* Collections (`Counter`)
-* Datetime
-* AbuseIPDB API
+- Python
+- SQLite
+- Regular Expressions (`re`)
+- Requests
+- JSON
+- Pathlib
+- Collections (`Counter`)
+- Datetime
+- AbuseIPDB API
 
 ## Future Improvements
 
-* SQLite storage
-* CSV export
-* Command-line interface with argparse
 * HTML report generation
 * Severity scoring
+* Flask dashboard
+* Search functionality
+* Alert visualizations
