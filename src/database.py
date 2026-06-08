@@ -1,4 +1,30 @@
+import csv
 import sqlite3
+
+
+def export_csv(output_path):
+
+    conn = sqlite3.connect("data/alerts.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT timestamp, user, ip, port
+        FROM alerts
+        """
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    with open(output_path, "w", newline="") as file:
+        writer = csv.writer(file)
+
+        writer.writerow(["timestamp", "user", "ip", "port"])
+
+        writer.writerows(rows)
 
 
 def create_database():

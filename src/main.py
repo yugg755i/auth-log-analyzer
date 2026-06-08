@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from database import clear_alerts, create_database, insert_alerts
+from database import clear_alerts, create_database, export_csv, insert_alerts
 from detector import detect_bruteforce, top_ips
 from dotenv import load_dotenv
 from enrichment import enrich_alerts
@@ -20,9 +20,16 @@ def main():
     parser.add_argument(
         "--malicious-alerts", action="store_true", help="show malicious alerts"
     )
+    parser.add_argument(
+        "--export-csv", action="store_true", help="export alerts to CSV"
+    )
     parser.add_argument("--report", action="store_true", help="generate report")
 
     args = parser.parse_args()
+
+    if not any(vars(args).values()):
+        parser.print_help()
+        return
 
     print("Log Analyzer")
 
@@ -35,29 +42,35 @@ def main():
     create_database()
     clear_alerts()
     insert_alerts(alerts)
-    print(f"\nParsed {len(alerts)} alerts")
+    print(f"\nParsed {len(alerts)} alerts\n")
 
     if args.top_ips:
-        print(f"\nTop IPs: {top_ips(alerts)}")
+        print(f"Top IPs: {top_ips(alerts)}\n")
 
     save_json(alerts, "data/parsed_alerts.json")
 
-    load_dotenv()
-    API_KEY = os.getenv("ABUSEIPDB_API_KEY")
-    malicious_alerts = enrich_alerts("data/parsed_alerts.json", API_KEY)
+    if args.malicious_alerts or args.report:
+        load_dotenv()
+        API_KEY = os.getenv("ABUSEIPDB_API_KEY")
+        malicious_alerts = enrich_alerts("data/parsed_alerts.json", API_KEY)
 
     if args.malicious_alerts:
-        print(f"\nmalicious alerts: {malicious_alerts}\n")
+        print(f"Malicious Alerts: {malicious_alerts}\n")
         save_json(malicious_alerts, "data/malicious_alerts.json")
 
     if args.bruteforce:
-        print(f"potential bruteforce detected: {detect_bruteforce(alerts)}")
+        print(f"Potential Bruteforce Detected: {detect_bruteforce(alerts)}\n")
+
+    if args.export_csv:
+        export_csv("data/alerts.csv")
+        print("\nCSV exported to data/alerts.csv")
 
     if args.report:
         generate_report(alerts, malicious_alerts, "data/report.txt")
         with open("data/report.txt") as f:
             file = f.read()
             print(file)
+        print("\nReport saved to data/report.txt")
 
 
 if __name__ == "__main__":
