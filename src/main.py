@@ -1,5 +1,6 @@
 import os
 
+from database import clear_alerts, create_database, get_all_alerts, insert_alerts
 from detector import detect_bruteforce, top_ips
 from dotenv import load_dotenv
 from enrichment import enrich_alerts
@@ -17,8 +18,11 @@ def main():
         return
 
     alerts = parse_log(latest_log)
+    create_database()
+    clear_alerts()
+    insert_alerts(alerts)
     print(f"Parsed {len(alerts)} alerts")
-
+    print(get_all_alerts())
     print("\ntop-ips:")
     print(top_ips(alerts))
 
