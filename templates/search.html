@@ -1,51 +1,79 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>Search Alerts</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search — Log Analyzer</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
   </head>
   <body>
-    <a href="/">Dashboard</a>
-    <h1>Search Alerts</h1>
+    <div class="page">
+      <header>
+        <div class="header-left">log-analyzer / <strong>search</strong></div>
+        <div class="header-right">
+          {% if searched %}{{ results|length }} result{{ 's' if results|length
+          != 1 }}{% endif %}
+        </div>
+      </header>
 
-    <form>
-      <input type="text" name="ip" placeholder="IP" value="{{ ip }}" />
+      <div class="page-title">Search Alerts</div>
 
-      <input type="text" name="user" placeholder="User" value="{{ user }}" />
+      <nav class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/search" class="active">Search</a>
+      </nav>
 
-      <button type="submit">Search</button>
-    </form>
+      <form class="search-block" method="get" action="/search">
+        <input
+          class="search-input"
+          type="text"
+          name="ip"
+          placeholder="IP address"
+          value="{{ ip }}"
+        />
+        <input
+          class="search-input"
+          type="text"
+          name="user"
+          placeholder="Username"
+          value="{{ user }}"
+        />
+        <button class="search-btn" type="submit">Search</button>
+      </form>
 
-    <br />
-
-    {% if results %}
-
-    <table border="1">
-      <tr>
-        <th>ID</th>
-        <th>Timestamp</th>
-        <th>User</th>
-        <th>IP</th>
-        <th>Port</th>
-      </tr>
-
-      {% for alert in results %}
-
-      <tr>
-        <td>{{ alert[0] }}</td>
-        <td>{{ alert[1] }}</td>
-        <td>{{ alert[2] }}</td>
-        <td>{{ alert[3] }}</td>
-        <td>{{ alert[4] }}</td>
-      </tr>
-
-      {% endfor %}
-    </table>
-    {% endif %}
-
-    <br />
-
-    {% if searched and not results %}
-    <p>No alerts found.</p>
-    {% endif %}
+      {% if results %}
+      <div class="table-block">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Timestamp</th>
+              <th>User</th>
+              <th>Source IP</th>
+              <th>Port</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for alert in results %}
+            <tr>
+              <td class="ts">{{ alert[0] }}</td>
+              <td class="ts">{{ alert[1] }}</td>
+              <td class="user">{{ alert[2] }}</td>
+              <td class="ip">{{ alert[3] }}</td>
+              <td class="ts">{{ alert[4] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% elif searched %}
+      <div class="table-block">
+        <div class="empty">no alerts matched your query</div>
+      </div>
+      {% endif %}
+    </div>
   </body>
 </html>
