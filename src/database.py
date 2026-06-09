@@ -98,11 +98,8 @@ def clear_alerts():
 
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        DELETE FROM alerts
-        """
-    )
+    cursor.execute("DELETE FROM alerts")
+    cursor.execute("DELETE FROM sqlite_sequence WHERE name='alerts'")
 
     conn.commit()
     conn.close()
