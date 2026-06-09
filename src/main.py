@@ -62,6 +62,15 @@ def main():
             API_KEY,
         )
 
+    if args.malicious_alerts:
+        print("\nMalicious Alerts")
+        print("----------------")
+
+        for alert in malicious_alerts:
+            print(f"{alert['ip']} - {alert['user']}")
+
+        save_json(malicious_alerts, "data/malicious_alerts.json")
+
     if args.bruteforce:
         print(f"Potential Bruteforce Detected: {detect_bruteforce(alerts)}\n")
 

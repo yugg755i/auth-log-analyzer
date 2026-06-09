@@ -1,3 +1,5 @@
+import json
+
 from flask import Flask, render_template, request
 from src.database import get_all_alerts, search_by_ip, search_by_user
 from src.detector import detect_bruteforce, top_ips
@@ -17,6 +19,14 @@ def dashboard():
     top_ips_list = top_ips(parsed_alerts)
     brute_force_count = len(detect_bruteforce(parsed_alerts))
 
+    try:
+        with open("data/malicious_alerts.json") as f:
+            malicious_alerts = json.load(f)
+
+        malicious_count = len(set(alert["ip"] for alert in malicious_alerts))
+    except (FileNotFoundError, json.JSONDecodeError):
+        malicious_count = 0
+
     return render_template(
         "dashboard.html",
         alerts=alerts,
@@ -24,7 +34,7 @@ def dashboard():
         unique_ips=unique_ips,
         top_ips=top_ips_list,
         brute_force_count=brute_force_count,
-        malicious_count=0,
+        malicious_count=malicious_count,
     )
 
 
