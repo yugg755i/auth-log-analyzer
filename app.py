@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request
 from src.database import get_all_alerts, search_by_ip, search_by_user
 from src.detector import detect_bruteforce, top_ips
+from src.pipeline import process_logs
 
+parsed_alerts = process_logs()
 app = Flask(__name__)
 
 
@@ -12,9 +14,8 @@ def dashboard():
     total_alerts = len(alerts)
     unique_ips = len(set(alert[3] for alert in alerts))
 
-    alert_dicts = [{"ip": alert[3]} for alert in alerts]
-    top_ips_list = top_ips(alert_dicts)
-    brute_force_count = len(detect_bruteforce(alert_dicts))
+    top_ips_list = top_ips(parsed_alerts)
+    brute_force_count = len(detect_bruteforce(parsed_alerts))
 
     return render_template(
         "dashboard.html",
