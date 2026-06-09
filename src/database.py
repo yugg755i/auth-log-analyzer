@@ -104,3 +104,23 @@ def clear_alerts():
 
     conn.commit()
     conn.close()
+
+
+def search_by_ip(ip):
+
+    conn = sqlite3.connect("data/alerts.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT * FROM alerts WHERE ip = ?
+        """,
+        (ip,),
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows

@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Log Analyzer Dashboard</title>
+  </head>
+  <body>
+    <h1>Log Analyzer Dashboard</h1>
+
+    <h2>Statistics</h2>
+
+    <p><strong>Total Alerts:</strong> {{ total_alerts }}</p>
+
+    <p><strong>Unique IPs:</strong> {{ unique_ips }}</p>
+
+    <h3>Top Source IPs</h3>
+
+    <ul>
+      {% for ip, count in top_ips %}
+      <li>{{ ip }} - {{ count }} attempts</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Alerts</h2>
+
+    <table border="1">
+      <tr>
+        <th>ID</th>
+        <th>Timestamp</th>
+        <th>User</th>
+        <th>IP</th>
+        <th>Port</th>
+      </tr>
+
+      {% for alert in alerts %}
+
+      <tr>
+        <td>{{ alert[0] }}</td>
+        <td>{{ alert[1] }}</td>
+        <td>{{ alert[2] }}</td>
+        <td>{{ alert[3] }}</td>
+        <td>{{ alert[4] }}</td>
+      </tr>
+
+      {% endfor %}
+    </table>
+  </body>
+</html>
