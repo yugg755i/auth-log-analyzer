@@ -1,105 +1,135 @@
+![Python](https://img.shields.io/badge/Python-3.x-blue)
+![Flask](https://img.shields.io/badge/Flask-Web%20UI-black)
+![SQLite](https://img.shields.io/badge/SQLite-Database-blue)
 # Log Analyzer
 
-Log Analyzer is a Python project that processes SSH authentication logs and extracts useful security-related information from failed login attempts.
+A Python-based SOC log analysis tool that parses SSH authentication logs, detects brute-force activity, enriches public IPs using AbuseIPDB, and presents findings through both a CLI and Flask dashboard.
 
-The project parses raw log data, identifies the most active source IPs, detects potential brute-force activity, enriches public IP addresses using AbuseIPDB, and generates investigation reports.
-
-The goal of this project was to practice Python, log parsing, basic detection engineering concepts, and threat intelligence enrichment while building something closer to a real-world security workflow than a standalone script.
+Built as a portfolio project to practice log parsing, detection engineering, and threat intelligence workflows in a realistic SOC context.
 
 ## Features
 
-* Parse SSH authentication logs using regular expressions
-* Extract timestamps, usernames, source IP addresses, and ports
-* Convert timestamps into a consistent format
-* Count login attempts by source IP
-* Identify the most active source IPs
-* Detect potential brute-force activity based on configurable thresholds
-* Automatically locate the newest log file in a directory
-* Check public IP reputation using the AbuseIPDB API
-* Export parsed and enriched findings to JSON
-* Generate a text-based investigation report
-* Store parsed alerts in SQLite
-* Command-line interface using argparse
-* Export alerts to CSV
+- SSH authentication log parsing
+- Brute-force detection
+- AbuseIPDB threat intelligence enrichment
+- SQLite alert storage
+- CSV and JSON export
+- Text-based investigation reports
+- Flask dashboard
+- Search by IP and username
 
-## Project Structure
+## Screenshots
 
-```text
-src/
-├── parser.py
-├── detector.py
-├── enrichment.py
-├── reporter.py
-├── database.py
-├── utils.py
-└── main.py
-```
-Generated output:
-- alerts.db
-- parsed_alerts.json
-- malicious_alerts.json
-- alerts.csv
-- report.txt
+### Dashboard
 
-## Installation
+![Dashboard](screenshots/Screenshot-2026-06-09_15:31:17.png)
+
+### Search Interface
+
+![Search](screenshots/Screenshot-2026-06-09_15:31:34.png)
+
+### CLI Usage
+
+![CLI](screenshots/Screenshot-2026-06-09_15:29:36.png)
+
+## Setup
 
 ```bash
 git clone https://github.com/yugg755i/log-analyzer.git
 cd log-analyzer
-
 pip install -r requirements.txt
 ```
 
-Create a `.env` file:
+Create a `.env` file with your AbuseIPDB key:
 
-```env
-ABUSEIPDB_API_KEY=YOUR_API_KEY
+```
+ABUSEIPDB_API_KEY=your_key_here
 ```
 
-## Usage
+Place SSH auth logs (`.log` files) in the `logs/` directory.
 
-Show top source IPs:
+## Project Structure
+
+```text
+log-analyzer/
+├── app.py              # Flask dashboard entry point
+├── requirements.txt
+├── README.md
+├── config/
+├── logs/
+│   └── auth.log        # sample SSH authentication log
+├── src/
+│   ├── __init__.py
+│   ├── parser.py       # log parsing and timestamp normalization
+│   ├── detector.py     # brute-force detection and IP analysis
+│   ├── enrichment.py   # AbuseIPDB threat intelligence enrichment
+│   ├── reporter.py     # report generation and JSON export
+│   ├── database.py     # SQLite storage, search, and CSV export
+│   ├── pipeline.py     # log processing workflow
+│   ├── utils.py        # log file discovery utilities
+│   └── main.py         # CLI entry point
+├── templates/
+│   ├── dashboard.html  # dashboard page
+│   └── search.html     # search page
+├── static/
+│   └── style.css       # dashboard styling
+├── screenshots/        # README screenshots
+├── data/               # generated output files
+└── tests/
+```
+
+## CLI usage
 
 ```bash
+# Show top attacking IPs
 python src/main.py --top-ips
-```
-Detect brute-force activity:
 
-```bash
+# Detect brute-force activity
 python src/main.py --bruteforce
-```
-Show malicious alerts:
 
-```bash
+# Check IPs against AbuseIPDB and show malicious alerts
 python src/main.py --malicious-alerts
-```
-Export alerts to CSV:
 
-```bash
+# Export alerts to CSV
 python src/main.py --export-csv
-```
-Generate a report:
 
-```bash
+# Generate full investigation report
 python src/main.py --report
 ```
 
-## Technologies Used
+## Dashboard
 
-- Python
+```bash
+python app.py
+```
+
+Opens at `http://localhost:5000`. Shows live alert stats, top source IPs with attempt bars, the full alert log, and an IP/username search page.
+
+## Stack
+
+- Python 3
+- Flask
 - SQLite
-- Regular Expressions (`re`)
 - Requests
-- JSON
-- Pathlib
-- Collections (`Counter`)
-- Datetime
+- python-dotenv
 - AbuseIPDB API
 
-## Future Improvements
+## Sample output
 
-* HTML report generation
-* Severity scoring
-* Flask dashboard
-* Search functionality
-* Alert visualizations
+```
+LOG ANALYZER REPORT
+Generated: 2026-06-09 15:34:07
+
+SUMMARY
+-------
+Total Alerts Parsed: 75
+Unique Source IPs: 32
+Potential Brute Force Sources: 3
+Malicious IPs Identified: 2
+
+TOP SOURCE IPS
+--------------
+45.155.205.233 : 20 attempts
+185.220.101.45 : 15 attempts
+91.92.109.126 : 10 attempts
+```
