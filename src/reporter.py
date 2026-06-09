@@ -10,7 +10,7 @@ def save_json(data, output_path):
 
 
 def generate_report(alerts, malicious_alerts, output_path):
-
+    unique_malicious_ips = len(set(alert["ip"] for alert in malicious_alerts))
     report = f"""
 LOG ANALYZER REPORT
 
@@ -21,7 +21,7 @@ SUMMARY
 Total Alerts Parsed: {len(alerts)}
 Unique Source IPs: {len(set(alert["ip"] for alert in alerts))}
 Potential Brute Force Sources: {len(detect_bruteforce(alerts))}
-Malicious IPs Identified: {len(malicious_alerts)}
+Malicious IPs Identified: {unique_malicious_ips}
 
 TOP SOURCE IPS
 --------------

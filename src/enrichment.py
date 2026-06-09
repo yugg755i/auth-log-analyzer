@@ -63,18 +63,21 @@ def is_malicious(ip, api_key):
 
 
 def enrich_alerts(json_path, api_key):
-    file = load_alerts(json_path)
-    if file is None:
-        return None
+    alerts = load_alerts(json_path)
+
+    checked_ips = {}
     malicious_list = []
-    for alert_dict in file:
-        if not is_public_ip(alert_dict["ip"]):
+
+    for alert in alerts:
+        ip = alert["ip"]
+
+        if not is_public_ip(ip):
             continue
-        value = is_malicious(alert_dict["ip"], api_key)
-        if value is True:
-            malicious_list.append(alert_dict)
-        elif value is False:
-            continue
-        else:
-            continue
+
+        if ip not in checked_ips:
+            checked_ips[ip] = is_malicious(ip, api_key)
+
+        if checked_ips[ip]:
+            malicious_list.append(alert)
+
     return malicious_list
