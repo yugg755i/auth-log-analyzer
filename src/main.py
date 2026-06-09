@@ -52,11 +52,15 @@ def main():
     if args.malicious_alerts or args.report:
         load_dotenv()
         API_KEY = os.getenv("ABUSEIPDB_API_KEY")
-        malicious_alerts = enrich_alerts("data/parsed_alerts.json", API_KEY)
 
-    if args.malicious_alerts:
-        print(f"Malicious Alerts: {malicious_alerts}\n")
-        save_json(malicious_alerts, "data/malicious_alerts.json")
+        if not API_KEY:
+            print("Error: ABUSEIPDB_API_KEY not found.")
+            return
+
+        malicious_alerts = enrich_alerts(
+            "data/parsed_alerts.json",
+            API_KEY,
+        )
 
     if args.bruteforce:
         print(f"Potential Bruteforce Detected: {detect_bruteforce(alerts)}\n")
