@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request
-from src.database import get_all_alerts, search_by_ip
+from src.database import get_all_alerts, search_by_ip, search_by_user
 from src.detector import top_ips
 
 app = Flask(__name__)
@@ -27,18 +27,24 @@ def dashboard():
 
 @app.route("/search")
 def search():
-    ip = request.args.get("ip")
+    ip = request.args.get("ip", "")
+    user = request.args.get("user", "")
+    searched = bool(ip or user)
 
     results = []
 
     if ip:
         results = search_by_ip(ip)
-    return render_template("search.html", results=results, ip=ip)
+    elif user:
+        results = search_by_user(user)
 
-
-@app.route("/alerts")
-def alerts():
-    return str(get_all_alerts())
+    return render_template(
+        "search.html",
+        results=results,
+        ip=ip,
+        user=user,
+        searched=searched,
+    )
 
 
 if __name__ == "__main__":

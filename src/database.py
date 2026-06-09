@@ -114,9 +114,31 @@ def search_by_ip(ip):
 
     cursor.execute(
         """
-        SELECT * FROM alerts WHERE ip = ?
+        SELECT * FROM alerts WHERE ip LIKE ?
+        ORDER BY timestamp DESC
         """,
-        (ip,),
+        ("%" + ip + "%",),
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
+
+
+def search_by_user(user):
+
+    conn = sqlite3.connect("data/alerts.db")
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT * FROM alerts WHERE user LIKE ?
+        ORDER BY timestamp DESC
+        """,
+        ("%" + user + "%",),
     )
 
     rows = cursor.fetchall()

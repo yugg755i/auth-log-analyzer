@@ -4,10 +4,13 @@
     <title>Search Alerts</title>
   </head>
   <body>
+    <a href="/">Dashboard</a>
     <h1>Search Alerts</h1>
 
     <form>
-      <input type="text" name="ip" placeholder="Enter IP address" />
+      <input type="text" name="ip" placeholder="IP" value="{{ ip }}" />
+
+      <input type="text" name="user" placeholder="User" value="{{ user }}" />
 
       <button type="submit">Search</button>
     </form>
@@ -37,7 +40,12 @@
 
       {% endfor %}
     </table>
+    {% endif %}
 
+    <br />
+
+    {% if searched and not results %}
+    <p>No alerts found.</p>
     {% endif %}
   </body>
 </html>
