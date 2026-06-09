@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 from src.database import get_all_alerts, search_by_ip, search_by_user
-from src.detector import top_ips
+from src.detector import detect_bruteforce, top_ips
 
 app = Flask(__name__)
 
@@ -10,18 +10,20 @@ def dashboard():
     alerts = get_all_alerts()
 
     total_alerts = len(alerts)
-
     unique_ips = len(set(alert[3] for alert in alerts))
 
-    top_ips_list = top_ips([{"ip": alert[3]} for alert in alerts])
+    alert_dicts = [{"ip": alert[3]} for alert in alerts]
+    top_ips_list = top_ips(alert_dicts)
+    brute_force_count = len(detect_bruteforce(alert_dicts))
 
     return render_template(
         "dashboard.html",
-        title="Log Analyzer Dashboard",
         alerts=alerts,
         total_alerts=total_alerts,
         unique_ips=unique_ips,
         top_ips=top_ips_list,
+        brute_force_count=brute_force_count,
+        malicious_count=0,
     )
 
 
@@ -37,7 +39,8 @@ def search():
         results = search_by_ip(ip)
     elif user:
         results = search_by_user(user)
-
+    else:
+        results = get_all_alerts()
     return render_template(
         "search.html",
         results=results,
