@@ -1,10 +1,12 @@
 import csv
 import sqlite3
 
+DB_PATH = "data/alerts.db"
+
 
 def export_csv(output_path):
 
-    conn = sqlite3.connect("data/alerts.db")
+    conn = sqlite3.connect(DB_PATH)
 
     cursor = conn.cursor()
 
@@ -29,7 +31,7 @@ def export_csv(output_path):
 
 def create_database():
 
-    conn = sqlite3.connect("data/alerts.db")
+    conn = sqlite3.connect(DB_PATH)
 
     cursor = conn.cursor()
 
@@ -49,7 +51,7 @@ def create_database():
 
 def insert_alerts(alerts):
 
-    conn = sqlite3.connect("data/alerts.db")
+    conn = sqlite3.connect(DB_PATH)
 
     cursor = conn.cursor()
 
@@ -73,7 +75,7 @@ def insert_alerts(alerts):
 
 def get_all_alerts():
 
-    conn = sqlite3.connect("data/alerts.db")
+    conn = sqlite3.connect(DB_PATH)
 
     cursor = conn.cursor()
 
@@ -92,7 +94,7 @@ def get_all_alerts():
 
 def clear_alerts():
 
-    conn = sqlite3.connect("data/alerts.db")
+    conn = sqlite3.connect(DB_PATH)
 
     cursor = conn.cursor()
 
@@ -108,7 +110,7 @@ def clear_alerts():
 
 def search_by_ip(ip):
 
-    conn = sqlite3.connect("data/alerts.db")
+    conn = sqlite3.connect(DB_PATH)
 
     cursor = conn.cursor()
 
@@ -129,7 +131,7 @@ def search_by_ip(ip):
 
 def search_by_user(user):
 
-    conn = sqlite3.connect("data/alerts.db")
+    conn = sqlite3.connect(DB_PATH)
 
     cursor = conn.cursor()
 
