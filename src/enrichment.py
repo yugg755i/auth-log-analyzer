@@ -1,6 +1,4 @@
 import ipaddress
-import json
-from pathlib import Path
 
 import requests
 
@@ -9,21 +7,9 @@ def is_public_ip(ip):
     return not ipaddress.ip_address(ip).is_private
 
 
-def load_alerts(json_path):
-    p = Path(json_path)
-    if not p.exists():
-        return None
-    try:
-        with open(p) as f:
-            return json.load(f)
-    except json.JSONDecodeError:
-        return None
-
-
 def check_abuseipdb(ip, api_key):
     try:
         params = {"ipAddress": ip, "maxAgeInDays": 90}
-
         headers = {"Key": api_key, "Accept": "application/json"}
 
         response = requests.get(
@@ -34,50 +20,28 @@ def check_abuseipdb(ip, api_key):
         )
         response.raise_for_status()
         return response.json()["data"]
-        # return {"abuseConfidenceScore": 85} - for test
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP Error: {e}")
-
-        if e.response is not None:
-            print(e.response.text)
+        print(f"AbuseIPDB HTTP error for {ip}: {e}")
         return None
-
     except requests.exceptions.RequestException as e:
-        print(f"error: {e}")
+        print(f"AbuseIPDB request error for {ip}: {e}")
         return None
 
 
-def is_malicious(ip, api_key):
+def enrich_ips(ips, api_key):
+    results = {}
 
-    ipdata = check_abuseipdb(ip, api_key)
-
-    # if not isinstance(ipdata, dict) or "abuseConfidenceScore" not in ipdata:
-    if ipdata is None:
-        return None
-
-    if ipdata["abuseConfidenceScore"] > 50:
-        return True
-    else:
-        return False
-
-
-def enrich_alerts(json_path, api_key):
-    alerts = load_alerts(json_path)
-
-    checked_ips = {}
-    malicious_list = []
-
-    for alert in alerts:
-        ip = alert["ip"]
-
+    for ip in ips:
         if not is_public_ip(ip):
             continue
 
-        if ip not in checked_ips:
-            checked_ips[ip] = is_malicious(ip, api_key)
+        data = check_abuseipdb(ip, api_key)
+        if data is not None:
+            results[ip] = data
 
-        if checked_ips[ip]:
-            malicious_list.append(alert)
+    return results
 
-    return malicious_list
+
+def is_malicious(abuse_data, confidence_threshold=50):
+    return abuse_data is not None and abuse_data.get("abuseConfidenceScore", 0) > confidence_threshold
