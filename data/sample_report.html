@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Incident Response Triage Report — 2026-07-04 16:37:42</title>
+<title>Incident Response Triage Report — 2026-07-04 17:07:47</title>
 <style>
 :root {
   --bg: #1f1d1a;
@@ -124,13 +124,13 @@ footer {
 
   <header>
     <div class="header-left">SOURCE: <strong>logs/auth.log</strong></div>
-    <div class="header-right">GENERATED 2026-07-04 16:37:42</div>
+    <div class="header-right">GENERATED 2026-07-04 17:07:47</div>
   </header>
 
   <h1 class="page-title">Incident Response Triage Report</h1>
 
   <div class="verdict danger">
-    2 IP(s) confirmed malicious via threat intel, 5 show brute-force patterns.
+    2 IP(s) confirmed malicious via threat intel, 3 IP(s) show time-windowed brute-force patterns, 3 IP(s) show username enumeration.
   </div>
 
   <div class="stat-row">
@@ -161,34 +161,124 @@ footer {
       </div>
       <div class="chart-box">
         <div class="chart-container"><canvas id="topIpChart" height="150"></canvas></div>
-        <div class="cap">Top 5 source IPs by attempt count</div>
+        <div class="cap">Top source IPs by attempt count</div>
       </div>
     </div>
   </section>
 
   <section>
-    <div class="section-title">Brute Force Detections (&ge; 5 failed attempts)</div>
+    <div class="section-title">Brute Force Detections (&ge; 5 failed attempts within 2m)</div>
     <div class="table-block">
       
       <table>
-        <thead><tr><th>Source IP</th><th class="num">Failed Attempts</th></tr></thead>
+        <thead><tr><th>Source IP</th><th class="num">Failed Attempts</th><th>Densest Window</th></tr></thead>
         <tbody>
           
-          <tr><td class="ip">45.155.205.233</td><td class="count-fail">30</td></tr>
+          <tr>
+            <td class="ip">45.155.205.233</td>
+            <td class="count-fail">30</td>
+            <td class="ts">2026-05-11 14:32:00 &rarr; 2026-05-11 14:32:20</td>
+          </tr>
           
-          <tr><td class="ip">185.220.101.45</td><td class="count-fail">22</td></tr>
+          <tr>
+            <td class="ip">185.220.101.45</td>
+            <td class="count-fail">22</td>
+            <td class="ts">2026-05-11 14:33:00 &rarr; 2026-05-11 14:33:15</td>
+          </tr>
           
-          <tr><td class="ip">91.92.109.126</td><td class="count-fail">14</td></tr>
-          
-          <tr><td class="ip">198.51.100.22</td><td class="count-fail">6</td></tr>
-          
-          <tr><td class="ip">203.0.113.9</td><td class="count-fail">6</td></tr>
+          <tr>
+            <td class="ip">91.92.109.126</td>
+            <td class="count-fail">10</td>
+            <td class="ts">2026-05-11 14:34:01 &rarr; 2026-05-11 14:34:10</td>
+          </tr>
           
         </tbody>
       </table>
       
     </div>
   </section>
+
+  <section>
+    <div class="section-title">Username Enumeration (&ge; 5 distinct usernames within 2m)</div>
+    <div class="table-block">
+      
+      <table>
+        <thead><tr><th>Source IP</th><th class="num">Distinct Usernames</th><th>Usernames Tried</th></tr></thead>
+        <tbody>
+          
+          <tr>
+            <td class="ip">45.155.205.233</td>
+            <td class="count-fail">5</td>
+            <td class="user">admin, oracle, postgres, root, ubuntu</td>
+          </tr>
+          
+          <tr>
+            <td class="ip">185.220.101.45</td>
+            <td class="count-fail">5</td>
+            <td class="user">admin, mysql, root, test, ubuntu</td>
+          </tr>
+          
+          <tr>
+            <td class="ip">91.92.109.126</td>
+            <td class="count-fail">5</td>
+            <td class="user">admin, git, postgres, root, ubuntu</td>
+          </tr>
+          
+        </tbody>
+      </table>
+      
+    </div>
+  </section>
+
+  
+  <section>
+    <div class="section-title">Session Timelines — Flagged IPs</div>
+    <div class="table-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Source IP</th><th>First Seen</th><th>Last Seen</th>
+            <th class="num">Duration</th><th class="num">Attempts</th>
+            <th class="num">Usernames</th><th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td class="ip">45.155.205.233</td>
+            <td class="ts">2026-05-11 14:32:00</td>
+            <td class="ts">2026-05-11 14:32:20</td>
+            <td class="num">20s</td>
+            <td class="num">31 (30 failed / 1 accepted)</td>
+            <td class="num">5</td>
+            <td><span style="color: var(--danger);">breached</span></td>
+          </tr>
+          
+          <tr>
+            <td class="ip">185.220.101.45</td>
+            <td class="ts">2026-05-11 14:33:00</td>
+            <td class="ts">2026-05-11 14:33:15</td>
+            <td class="num">15s</td>
+            <td class="num">22 (22 failed / 0 accepted)</td>
+            <td class="num">5</td>
+            <td>no successful login</td>
+          </tr>
+          
+          <tr>
+            <td class="ip">91.92.109.126</td>
+            <td class="ts">2026-05-11 14:34:01</td>
+            <td class="ts">2026-05-11 18:48:00</td>
+            <td class="num">15239s</td>
+            <td class="num">14 (14 failed / 0 accepted)</td>
+            <td class="num">6</td>
+            <td>no successful login</td>
+          </tr>
+          
+        </tbody>
+      </table>
+    </div>
+  </section>
+  
 
   
   <section>
@@ -220,17 +310,17 @@ footer {
         <tbody>
           
           <tr>
-            <td class="ip">185.220.101.45</td>
-            <td class="score">100%</td>
-            <td>DE</td>
-            <td class="num">136</td>
-          </tr>
-          
-          <tr>
             <td class="ip">91.92.109.126</td>
             <td class="score">81%</td>
             <td>BG</td>
             <td class="num">57</td>
+          </tr>
+          
+          <tr>
+            <td class="ip">185.220.101.45</td>
+            <td class="score">100%</td>
+            <td>DE</td>
+            <td class="num">136</td>
           </tr>
           
         </tbody>
