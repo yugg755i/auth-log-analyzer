@@ -161,28 +161,84 @@ footer {
       </div>
       <div class="chart-box">
         <div class="chart-container"><canvas id="topIpChart" height="150"></canvas></div>
-        <div class="cap">Top 5 source IPs by attempt count</div>
+        <div class="cap">Top source IPs by attempt count</div>
       </div>
     </div>
   </section>
 
   <section>
-    <div class="section-title">Brute Force Detections (&ge; {{ ctx.bruteforce_threshold }} failed attempts)</div>
+    <div class="section-title">Brute Force Detections (&ge; {{ ctx.bruteforce_threshold }} failed attempts within {{ ctx.bruteforce_window_minutes }}m)</div>
     <div class="table-block">
       {% if ctx.bruteforce %}
       <table>
-        <thead><tr><th>Source IP</th><th class="num">Failed Attempts</th></tr></thead>
+        <thead><tr><th>Source IP</th><th class="num">Failed Attempts</th><th>Densest Window</th></tr></thead>
         <tbody>
-          {% for ip, count in ctx.bruteforce %}
-          <tr><td class="ip">{{ ip }}</td><td class="count-fail">{{ count }}</td></tr>
+          {% for ip, info in ctx.bruteforce %}
+          <tr>
+            <td class="ip">{{ ip }}</td>
+            <td class="count-fail">{{ info.count }}</td>
+            <td class="ts">{{ info.window_start }} &rarr; {{ info.window_end }}</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
       {% else %}
-      <div class="empty">No source IPs crossed the brute-force threshold.</div>
+      <div class="empty">No source IPs crossed the brute-force threshold within a {{ ctx.bruteforce_window_minutes }}-minute window.</div>
       {% endif %}
     </div>
   </section>
+
+  <section>
+    <div class="section-title">Username Enumeration (&ge; {{ ctx.enum_threshold }} distinct usernames within {{ ctx.enum_window_minutes }}m)</div>
+    <div class="table-block">
+      {% if ctx.username_enum %}
+      <table>
+        <thead><tr><th>Source IP</th><th class="num">Distinct Usernames</th><th>Usernames Tried</th></tr></thead>
+        <tbody>
+          {% for ip, info in ctx.username_enum %}
+          <tr>
+            <td class="ip">{{ ip }}</td>
+            <td class="count-fail">{{ info.distinct_usernames }}</td>
+            <td class="user">{{ info.usernames | join(", ") }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">No source IPs tried multiple usernames within a {{ ctx.enum_window_minutes }}-minute window.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if ctx.timelines %}
+  <section>
+    <div class="section-title">Session Timelines — Flagged IPs</div>
+    <div class="table-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Source IP</th><th>First Seen</th><th>Last Seen</th>
+            <th class="num">Duration</th><th class="num">Attempts</th>
+            <th class="num">Usernames</th><th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ip, t in ctx.timelines.items() %}
+          <tr>
+            <td class="ip">{{ ip }}</td>
+            <td class="ts">{{ t.first_seen }}</td>
+            <td class="ts">{{ t.last_seen }}</td>
+            <td class="num">{{ t.duration_seconds }}s</td>
+            <td class="num">{{ t.total_attempts }} ({{ t.failed_attempts }} failed / {{ t.accepted_attempts }} accepted)</td>
+            <td class="num">{{ t.unique_usernames }}</td>
+            <td>{% if t.breached %}<span style="color: var(--danger);">breached</span>{% else %}no successful login{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
 
   {% if ctx.accepted_after_bruteforce %}
   <section>
