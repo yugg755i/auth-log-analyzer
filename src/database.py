@@ -1,147 +1,47 @@
 import csv
 import sqlite3
 
-DB_PATH = "data/alerts.db"
+DEFAULT_DB_PATH = "data/alerts.db"
 
 
-def export_csv(output_path):
-
-    conn = sqlite3.connect(DB_PATH)
-
+def create_database(db_path=DEFAULT_DB_PATH):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT timestamp, user, ip, port
-        FROM alerts
-        """
-    )
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    with open(output_path, "w", newline="") as file:
-        writer = csv.writer(file)
-
-        writer.writerow(["timestamp", "user", "ip", "port"])
-
-        writer.writerows(rows)
-
-
-def create_database():
-
-    conn = sqlite3.connect(DB_PATH)
-
-    cursor = conn.cursor()
-
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS alerts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        user TEXT,
-        ip TEXT,
-        port TEXT
-    )
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT,
+            status TEXT,
+            invalid_user INTEGER,
+            user TEXT,
+            ip TEXT,
+            port TEXT,
+            source_file TEXT
+        )
     """)
-
     conn.commit()
     conn.close()
 
 
-def insert_alerts(alerts):
-
-    conn = sqlite3.connect(DB_PATH)
-
+def insert_events(events, db_path=DEFAULT_DB_PATH):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
+    cursor.executemany(
+        """
+        INSERT INTO events (timestamp, status, invalid_user, user, ip, port, source_file)
+        VALUES (:timestamp, :status, :invalid_user, :user, :ip, :port, :source_file)
+        """,
+        [{**e, "invalid_user": int(e["invalid_user"])} for e in events],
+    )
+    conn.commit()
+    conn.close()
 
-    for alert in alerts:
-        cursor.execute(
-            """
-        INSERT INTO alerts (
-            timestamp,
-            user,
-            ip,
-            port
+
+def export_csv(events, output_path):
+    with open(output_path, "w", newline="") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=["timestamp", "status", "invalid_user", "user", "ip", "port", "source_file"],
         )
-        VALUES (?, ?, ?, ?)
-        """,
-            (alert["timestamp"], alert["user"], alert["ip"], alert["port"]),
-        )
-
-    conn.commit()
-    conn.close()
-
-
-def get_all_alerts():
-
-    conn = sqlite3.connect(DB_PATH)
-
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT * FROM alerts
-        """
-    )
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
-
-
-def clear_alerts():
-
-    conn = sqlite3.connect(DB_PATH)
-
-    cursor = conn.cursor()
-
-    cursor.execute("DELETE FROM alerts")
-    cursor.execute("DELETE FROM sqlite_sequence WHERE name='alerts'")
-
-    conn.commit()
-    conn.close()
-
-
-def search_by_ip(ip):
-
-    conn = sqlite3.connect(DB_PATH)
-
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT * FROM alerts WHERE ip LIKE ?
-        ORDER BY timestamp DESC
-        """,
-        ("%" + ip + "%",),
-    )
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
-
-
-def search_by_user(user):
-
-    conn = sqlite3.connect(DB_PATH)
-
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT * FROM alerts WHERE user LIKE ?
-        ORDER BY timestamp DESC
-        """,
-        ("%" + user + "%",),
-    )
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
+        writer.writeheader()
+        writer.writerows(events)
