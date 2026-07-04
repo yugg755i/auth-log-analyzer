@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Incident Response Triage Report — {{ ctx.generated_at }}</title>
+<style>
+:root {
+  --bg: #1f1d1a;
+  --surface: #2a2724;
+  --surface-alt: #35312d;
+  --text: #e7e0d7;
+  --text-muted: #a89e92;
+  --accent: #556995;
+  --accent-bright: #7287b5;
+  --success: #929c62;
+  --warning: #cf9f5f;
+  --danger: #c97570;
+  --border: #4a443d;
+  --mono: "Consolas", "Menlo", monospace;
+  --sans: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 32px 40px 60px;
+}
+
+.page { max-width: 900px; margin: 0 auto; }
+
+header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.header-left { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+.header-left strong { color: var(--text); font-weight: 600; }
+.header-right { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+
+.page-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+
+.verdict {
+  font-family: var(--mono);
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+}
+.verdict.warn { border-left-color: var(--warning); }
+.verdict.danger { border-left-color: var(--danger); }
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+.stat { background: var(--surface); padding: 14px 18px; }
+.stat-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+.stat-value { font-family: var(--mono); font-size: 24px; font-weight: 700; }
+.stat-value.fail { color: var(--danger); }
+.stat-value.ok { color: var(--success); }
+
+section { margin-bottom: 32px; }
+.section-title {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px; margin-bottom: 12px;
+}
+
+.chart-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.chart-box { flex: 1; min-width: 300px; }
+.chart-box .cap { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.chart-container { background: var(--surface); border: 1px solid var(--border); padding: 16px; width: 100%; }
+canvas { display: block; width: 100%; }
+
+.ip-block { background: var(--surface); border: 1px solid var(--border); }
+.ip-row { display: flex; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.ip-row:last-child { border-bottom: none; }
+.ip-rank { font-family: var(--mono); font-size: 10px; color: var(--text-muted); width: 24px; }
+.ip-addr { font-family: var(--mono); font-size: 12px; color: var(--accent); flex: 1; }
+.ip-count { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+
+.table-block { background: var(--surface); border: 1px solid var(--border); width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); padding: 9px 16px; text-align: left; font-weight: 500;
+  border-bottom: 1px solid var(--border); background: var(--surface-alt); white-space: nowrap;
+}
+td { font-family: var(--mono); font-size: 11.5px; padding: 9px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+td.ts { color: var(--text-muted); }
+td.ip { color: var(--accent); }
+td.user { color: var(--warning); }
+td.num { text-align: right; }
+td.count-fail { color: var(--danger); text-align: right; }
+td.score { color: var(--warning); }
+th.num { text-align: right; }
+
+.empty { padding: 28px 16px; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+
+footer {
+  margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="header-left">SOURCE: <strong>{{ ctx.source_files | join(", ") }}</strong></div>
+    <div class="header-right">GENERATED {{ ctx.generated_at }}</div>
+  </header>
+
+  <h1 class="page-title">Incident Response Triage Report</h1>
+
+  <div class="verdict {% if ctx.malicious_ips %}danger{% elif ctx.bruteforce %}warn{% endif %}">
+    {{ ctx.verdict }}
+  </div>
+
+  <div class="stat-row">
+    <div class="stat">
+      <div class="stat-label">Total Events</div>
+      <div class="stat-value">{{ ctx.total_events }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Unique IPs</div>
+      <div class="stat-value">{{ ctx.unique_ips }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Failed Logins</div>
+      <div class="stat-value fail">{{ ctx.total_failed }}</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Accepted Logins</div>
+      <div class="stat-value ok">{{ ctx.total_accepted }}</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-title">Activity Overview</div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <div class="chart-container"><canvas id="hourlyChart" height="150"></canvas></div>
+        <div class="cap">Events per hour</div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-container"><canvas id="topIpChart" height="150"></canvas></div>
+        <div class="cap">Top 5 source IPs by attempt count</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">Brute Force Detections (&ge; {{ ctx.bruteforce_threshold }} failed attempts)</div>
+    <div class="table-block">
+      {% if ctx.bruteforce %}
+      <table>
+        <thead><tr><th>Source IP</th><th class="num">Failed Attempts</th></tr></thead>
+        <tbody>
+          {% for ip, count in ctx.bruteforce %}
+          <tr><td class="ip">{{ ip }}</td><td class="count-fail">{{ count }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">No source IPs crossed the brute-force threshold.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if ctx.accepted_after_bruteforce %}
+  <section>
+    <div class="section-title">Accepted Login From a Brute-Forcing IP</div>
+    <div class="table-block">
+      <table>
+        <thead><tr><th>Timestamp</th><th>Source IP</th><th>User</th><th class="num">Port</th></tr></thead>
+        <tbody>
+          {% for e in ctx.accepted_after_bruteforce %}
+          <tr>
+            <td class="ts">{{ e.timestamp }}</td>
+            <td class="ip">{{ e.ip }}</td>
+            <td class="user">{{ e.user }}</td>
+            <td class="num">{{ e.port }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <section>
+    <div class="section-title">Threat Intelligence (AbuseIPDB)</div>
+    <div class="table-block">
+      {% if ctx.malicious_ips %}
+      <table>
+        <thead><tr><th>IP</th><th>Confidence</th><th>Country</th><th class="num">Reports</th></tr></thead>
+        <tbody>
+          {% for ip, data in ctx.malicious_ips.items() %}
+          <tr>
+            <td class="ip">{{ ip }}</td>
+            <td class="score">{{ data.abuseConfidenceScore }}%</td>
+            <td>{{ data.countryCode or "—" }}</td>
+            <td class="num">{{ data.totalReports or 0 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">No IPs matched AbuseIPDB's threat intel database (or enrichment was skipped).</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title">Top Source IPs</div>
+    <div class="ip-block">
+      {% for ip, count in ctx.top_ips %}
+      <div class="ip-row">
+        <div class="ip-rank">#{{ loop.index }}</div>
+        <div class="ip-addr">{{ ip }}</div>
+        <div class="ip-count">{{ count }} attempts</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <footer>
+    Log Analyzer — self-contained forensic triage report. No external network calls are made to render this file.
+  </footer>
+
+</div>
+
+<script>
+  const hourly = {{ hourly_json | safe }};
+  const topIps = {{ top_ip_json | safe }};
+
+  window.addEventListener("load", () => {
+    if (hourly.length) drawChart("hourlyChart", hourly.map(d => d.hour.split(" ")[1] || d.hour), hourly.map(d => d.count), "#556995");
+    if (topIps.length) drawChart("topIpChart", topIps.map(d => d[0]), topIps.map(d => d[1]), "#cf9f5f");
+  });
+
+function drawChart(canvasId, labels, values, color) {
+    const canvas = document.getElementById(canvasId);
+    const container = canvas.parentElement;
+    canvas.width = container.clientWidth;
+
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width, h = canvas.height;
+
+    if (canvasId === "topIpChart") {
+      const maxBars = 5;
+      const displayLabels = labels.slice(0, maxBars);
+      const displayValues = values.slice(0, maxBars);
+
+      const padL = 95, padB = 15, padR = 85, padT = 15;
+      const chartW = w - padL - padR, chartH = h - padT - padB;
+      const max = Math.max(...displayValues, 1);
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = "#4a443d";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, h - padB);
+      ctx.lineTo(w - padR, h - padB);
+      ctx.stroke();
+
+      const slot = chartH / displayValues.length;
+      const barH = slot * 0.55;
+
+      displayValues.forEach((v, i) => {
+        const barW = (v / max) * chartW;
+        const x = padL;
+        const y = padT + i * slot + (slot - barH) / 2;
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, barW, barH);
+
+        ctx.fillStyle = "#e7e0d7";
+        ctx.font = "10px Consolas, Menlo, monospace";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText(displayLabels[i], padL - 8, y + barH / 2);
+
+        ctx.fillStyle = "#a89e92";
+        ctx.font = "10px Consolas, Menlo, monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${v} attempts`, x + barW + 8, y + barH / 2);
+      });
+
+      ctx.fillStyle = "#a89e92";
+      ctx.font = "10px Consolas, Menlo, monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("0", padL, h - 4);
+      ctx.fillText(max, w - padR, h - 4);
+
+    } else {
+      const padL = 34, padB = 26, padR = 10, padT = 12;
+      const chartW = w - padL - padR, chartH = h - padT - padB;
+      const max = Math.max(...values, 1);
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = "#4a443d";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, h - padB);
+      ctx.lineTo(w - padR, h - padB);
+      ctx.stroke();
+
+      const slot = chartW / values.length;
+      const barW = slot * 0.7;
+      const labelEvery = Math.max(1, Math.ceil(values.length / 10));
+
+      values.forEach((v, i) => {
+        const barH = (v / max) * chartH;
+        const x = padL + i * slot + (slot - barW) / 2;
+        const y = h - padB - barH;
+
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, barW, barH);
+
+        if (i % labelEvery === 0) {
+          ctx.fillStyle = "#a89e92";
+          ctx.font = "10px Consolas, Menlo, monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(labels[i], x + barW / 2, h - 8);
+        }
+      });
+
+      ctx.fillStyle = "#a89e92";
+      ctx.font = "10px Consolas, Menlo, monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(max, padL - 8, padT + 4);
+      ctx.fillText("0", padL - 8, h - padB);
+    }
+  }
+</script>
+</body>
+</html>
