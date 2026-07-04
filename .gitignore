@@ -8,5 +8,7 @@ data/*.json
 data/*.csv
 data/*.db
 data/*.txt
+data/*.html
+!data/.gitkeep
 
 .venv/
