@@ -7,13 +7,13 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from src import database
-from src.detector import filter_by_time
-from src.enrichment import enrich_ips
-from src.input_resolver import resolve_log_paths
-from src.parser import parse_logs
-from src.report.builder import build_report_context
-from src.report.renderer import render_report
+from log_analyzer import database
+from log_analyzer.detector import filter_by_time
+from log_analyzer.enrichment import enrich_ips
+from log_analyzer.input_resolver import resolve_log_paths
+from log_analyzer.parser import parse_logs
+from log_analyzer.report.builder import build_report_context
+from log_analyzer.report.renderer import render_report
 
 
 def parse_date_arg(value):

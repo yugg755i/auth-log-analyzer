@@ -1,0 +1,13 @@
+[project]
+name = "log-analyzer"
+version = "0.3.0"
+dependencies = ["requests", "python-dotenv", "jinja2"]
+
+[project.scripts]
+loganalyzer = "log_analyzer.cli:main"
+
+[tool.setuptools]
+packages = ["log_analyzer", "log_analyzer.report"]
+
+[tool.setuptools.package-data]
+"log_analyzer.report" = ["template.html"]

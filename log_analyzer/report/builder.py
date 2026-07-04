@@ -1,7 +1,7 @@
 from collections import Counter
 from datetime import datetime
 
-from src.detector import (
+from log_analyzer.detector import (
     accepted_events,
     build_session_timeline,
     count_ips,
@@ -10,7 +10,7 @@ from src.detector import (
     failed_events,
     top_ips,
 )
-from src.enrichment import is_malicious
+from log_analyzer.enrichment import is_malicious
 
 
 def _hourly_histogram(events):

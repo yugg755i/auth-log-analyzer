@@ -12,3 +12,7 @@ data/*.html
 !data/.gitkeep
 
 .venv/
+*.egg-info/
+build/
+dist/
+/report.html
