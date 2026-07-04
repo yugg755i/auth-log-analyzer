@@ -1,2 +1,2 @@
 data/*.html linguist-language=false
-src/report/template.html linguist-language=false
+log_analyzer/report/template.html linguist-language=false
