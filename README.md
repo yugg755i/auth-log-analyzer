@@ -1,34 +1,36 @@
 # Log Analyzer
 
-A single-command CLI tool for SSH auth log forensic triage. Point it at
-one or more logs, get a self-contained HTML report back.
+A single-command CLI tool for SSH authentication log forensic triage.
+Analyze one or more log files and generate a self-contained HTML incident report with detection results, threat intelligence enrichment, and investigation context.
 
 ```
-logs in -> parse -> detect -> enrich -> one HTML report out
+logs → parse → detect → enrich → report
 ```
 
-Built for the workflow an analyst actually has during incident
-response — you're handed a log dump, not asked to spin up a web app.
+Built around a real incident response workflow: given a collection of SSH authentication logs, quickly identify suspicious activity and produce a report suitable for analyst review.
 
 ## Features
 
-- Single-command CLI, installed as a real `loganalyzer` command — no `python script.py`
-- Parses SSH auth logs, distinguishing failed / accepted / invalid-user attempts
-- Accepts a single file, a directory, or a glob — including `.gz` / rotated logs
+- Single-command CLI installed as a native `loganalyzer` command
+- Parses SSH authentication logs, distinguishing failed, accepted, and invalid-user attempts
+- Supports individual files, directories, glob patterns, rotated logs, and `.gz` archives
+- Configurable detection thresholds via YAML configuration
 - Time-range filtering (`--since` / `--until`)
-- **Time-windowed brute-force detection** — flags IPs with N+ failed attempts inside a sliding window, not a flat count over the whole file
-- **Username enumeration detection** — flags IPs trying many distinct usernames in a short window
-- **Session timelines** — first seen, last seen, attempt breakdown, and outcome for every flagged IP
-- Flags the highest-signal case: an accepted login from an IP that also brute-forced
+- Sliding-window SSH brute-force detection
+- Username enumeration detection
+- Session reconstruction with first seen, last seen, attempt counts, and authentication outcomes
+- Detects successful logins following brute-force activity
 - AbuseIPDB threat intelligence enrichment for public IPs
-- Self-contained HTML report — inline charts, no CDN, no external calls to render it
-- Optional CSV / SQLite export for anyone who wants a queryable record
+- Self-contained HTML incident report with inline charts
+- Optional CSV and SQLite export
+- Unit-tested parser, detector, and configuration modules using pytest
 
 ## Install
 
 ```bash
 git clone https://github.com/yugg755i/log-analyzer.git
 cd log-analyzer
+pip install -r requirements.txt
 pip install -e .
 ```
 
@@ -69,40 +71,79 @@ loganalyzer logs/auth.log --no-enrich
 
 # also keep a queryable record
 loganalyzer logs/auth.log --export-csv out.csv --export-db
+
+# use a custom configuration
+loganalyzer logs/ --config config/loganalyzer.yaml
 ```
 
 Full flag list: `loganalyzer --help`
+
+## Configuration
+
+Detection thresholds can be customized using a YAML configuration file.
+
+By default the application looks for:
+
+config/loganalyzer.yaml
+
+Example:
+
+```yaml
+bruteforce_threshold: 5
+bruteforce_window: 5
+
+enum_threshold: 5
+enum_window: 5
+
+confidence_threshold: 90
+```
+
+Command-line arguments override configuration values when both are provided.
 
 ## Project Structure
 
 ```text
 log-analyzer/
-├── pyproject.toml          # packaging + the loganalyzer console-script entry point
+├── pyproject.toml          # packaging + loganalyzer console script
 ├── requirements.txt
 ├── README.md
-├── logs/                   # drop SSH auth logs here (plain or .gz)
+├── config/
+│   └── loganalyzer.yaml    # optional detection thresholds and application settings
+├── logs/                   # SSH authentication logs (plain or .gz)
 ├── log_analyzer/
-│   ├── cli.py              # CLI entrypoint — argument parsing, orchestrates the run
-│   ├── parser.py           # log parsing, status/invalid-user aware, gz support
-│   ├── input_resolver.py   # file / directory / glob resolution
-│   ├── detector.py         # time-windowed brute-force, username enumeration, sessions
-│   ├── enrichment.py       # AbuseIPDB threat intelligence
+│   ├── __init__.py
+│   ├── cli.py              # CLI entry point and application orchestration
+│   ├── config.py           # configuration loading, validation, and defaults
+│   ├── parser.py           # SSH log parsing with .gz support
+│   ├── input_resolver.py   # file, directory, and glob resolution
+│   ├── detector.py         # brute-force detection, username enumeration, session analysis
+│   ├── enrichment.py       # AbuseIPDB threat intelligence enrichment
 │   ├── database.py         # optional CSV / SQLite export
 │   └── report/
+│       ├── __init__.py
 │       ├── builder.py      # assembles report context
-│       ├── renderer.py     # renders the self-contained HTML file
-│       └── template.html   # report layout, styling, inline charts
-├── data/                   # generated reports / exports (gitignored)
-└── tests/
+│       ├── renderer.py     # renders the self-contained HTML report
+│       └── template.html   # report template, styling, and inline charts
+├── data/                   # generated reports and exports (gitignored)
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py         # shared pytest fixtures
+│   ├── test_config.py      # configuration tests
+│   ├── test_detector.py    # detection engine tests
+│   └── test_parser.py      # parser tests
+└── screenshots/
+    └── report.png          # README preview image
 ```
 
 ## Stack
 
 - Python 3
-- Jinja2 (report templating)
+- Jinja2
 - Requests
+- PyYAML
 - python-dotenv
-- SQLite (optional export only)
+- pytest
+- SQLite (optional)
 - AbuseIPDB API
 
 ## Report Preview
