@@ -8,6 +8,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from log_analyzer import database
+from log_analyzer.config import ConfigError, load_config
 from log_analyzer.detector import filter_by_time
 from log_analyzer.enrichment import enrich_ips
 from log_analyzer.input_resolver import resolve_log_paths
@@ -36,18 +37,48 @@ def build_arg_parser():
     parser.add_argument("-o", "--output", default="report.html", help="report output path (default: report.html)")
     parser.add_argument("--since", type=parse_date_arg, help="only include events on/after this time")
     parser.add_argument("--until", type=parse_date_arg, help="only include events on/before this time")
-    parser.add_argument("--threshold", type=int, default=5, help="failed attempts within the window to flag brute-force (default: 5)")
-    parser.add_argument("--window", type=int, default=2, metavar="MINUTES", help="brute-force sliding window size in minutes (default: 2)")
-    parser.add_argument("--enum-threshold", type=int, default=5, help="distinct usernames within the window to flag enumeration (default: 5)")
-    parser.add_argument("--enum-window", type=int, default=2, metavar="MINUTES", help="username-enumeration sliding window size in minutes (default: 2)")
+
+    parser.add_argument(
+        "--config", metavar="PATH",
+        help="path to a YAML config file for thresholds (default: auto-detect config/loganalyzer.yaml)"
+    )
+    parser.add_argument("--threshold", type=int, default=None,
+                         help="failed attempts within the window to flag brute-force (default: 5)")
+    parser.add_argument("--window", type=int, default=None, metavar="MINUTES",
+                         help="brute-force sliding window size in minutes (default: 2)")
+    parser.add_argument("--enum-threshold", type=int, default=None,
+                         help="distinct usernames within the window to flag enumeration (default: 5)")
+    parser.add_argument("--enum-window", type=int, default=None, metavar="MINUTES",
+                         help="username-enumeration sliding window size in minutes (default: 2)")
+    parser.add_argument("--confidence-threshold", type=int, default=None,
+                         help="AbuseIPDB confidence score above which an IP is treated as malicious (default: 50)")
+
     parser.add_argument("--no-enrich", action="store_true", help="skip AbuseIPDB threat intel lookups")
     parser.add_argument("--export-csv", metavar="PATH", help="also export parsed events to CSV")
     parser.add_argument("--export-db", action="store_true", help="also persist parsed events to data/alerts.db")
     return parser
 
 
+def resolve_thresholds(args, config):
+    return {
+        "bruteforce_threshold": args.threshold if args.threshold is not None else config["bruteforce_threshold"],
+        "bruteforce_window_minutes": args.window if args.window is not None else config["bruteforce_window_minutes"],
+        "enum_threshold": args.enum_threshold if args.enum_threshold is not None else config["enum_threshold"],
+        "enum_window_minutes": args.enum_window if args.enum_window is not None else config["enum_window_minutes"],
+        "confidence_threshold": args.confidence_threshold if args.confidence_threshold is not None else config["confidence_threshold"],
+    }
+
+
 def main():
     args = build_arg_parser().parse_args()
+
+    try:
+        config = load_config(args.config)
+    except ConfigError as e:
+        print(f"error: {e}")
+        sys.exit(1)
+
+    thresholds = resolve_thresholds(args, config)
 
     try:
         log_paths = resolve_log_paths(args.path)
@@ -79,11 +110,12 @@ def main():
     ctx = build_report_context(
         events,
         source_files=log_paths,
-        bruteforce_threshold=args.threshold,
-        bruteforce_window_minutes=args.window,
-        enum_threshold=args.enum_threshold,
-        enum_window_minutes=args.enum_window,
+        bruteforce_threshold=thresholds["bruteforce_threshold"],
+        bruteforce_window_minutes=thresholds["bruteforce_window_minutes"],
+        enum_threshold=thresholds["enum_threshold"],
+        enum_window_minutes=thresholds["enum_window_minutes"],
         abuse_data=abuse_data,
+        confidence_threshold=thresholds["confidence_threshold"],
     )
 
     render_report(ctx, args.output)
