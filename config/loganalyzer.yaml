@@ -1,0 +1,14 @@
+# Failed attempts within the window required to flag brute-force
+bruteforce_threshold: 5
+
+# Sliding window size (minutes) for brute-force detection
+bruteforce_window_minutes: 2
+
+# Distinct usernames within the window required to flag enumeration
+enum_threshold: 5
+
+# Sliding window size (minutes) for username-enumeration detection
+enum_window_minutes: 2
+
+# AbuseIPDB confidence score (0-100) above which an IP is treated as malicious
+confidence_threshold: 50

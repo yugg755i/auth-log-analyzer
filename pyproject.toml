@@ -1,7 +1,10 @@
 [project]
 name = "log-analyzer"
-version = "0.3.0"
-dependencies = ["requests", "python-dotenv", "jinja2"]
+version = "0.4.0"
+dependencies = ["requests", "python-dotenv", "jinja2", "pyyaml"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
 
 [project.scripts]
 loganalyzer = "log_analyzer.cli:main"
@@ -11,3 +14,6 @@ packages = ["log_analyzer", "log_analyzer.report"]
 
 [tool.setuptools.package-data]
 "log_analyzer.report" = ["template.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
