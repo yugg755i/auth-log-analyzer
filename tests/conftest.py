@@ -27,7 +27,8 @@ def write_gz_log(tmp_path):
     return _write
 
 
-def make_event(timestamp, status, ip, user="root", port="50356", invalid_user=False, source_file="auth.log"):
+def make_event(timestamp, status, ip, user="root", port="50356", invalid_user=False,
+                source_file="auth.log", raw_line=None):
     return {
         "timestamp": timestamp,
         "status": status,
@@ -36,4 +37,5 @@ def make_event(timestamp, status, ip, user="root", port="50356", invalid_user=Fa
         "ip": ip,
         "port": port,
         "source_file": source_file,
+        "raw_line": raw_line or f"{timestamp} host sshd[1234]: {status} password for {user} from {ip} port {port} ssh2",
     }

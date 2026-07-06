@@ -47,6 +47,7 @@ def parse_log(log_path, reference_year=None):
                     "ip": groups["ip"],
                     "port": groups["port"],
                     "source_file": str(log_path),
+                    "raw_line": line.rstrip("\n"),
                 }
             )
 

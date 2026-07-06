@@ -22,6 +22,15 @@ def test_parse_log_extracts_failed_event(write_log):
     assert event["source_file"] == str(path)
 
 
+def test_parse_log_retains_raw_line_for_evidence(write_log):
+    line = sshd_line("Jul  4 18:24:58", "Failed", "45.155.205.233", "50356", user="root")
+    path = write_log([line])
+
+    events = parse_log(path, reference_year=2026)
+
+    assert events[0]["raw_line"] == line
+
+
 def test_parse_log_extracts_accepted_event(write_log):
     path = write_log([sshd_line("Jul  4 18:25:10", "Accepted", "45.155.205.233", "50356", user="root")])
 
