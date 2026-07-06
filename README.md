@@ -21,9 +21,13 @@ Built around a real incident response workflow: given a collection of SSH authen
 - Session reconstruction with first seen, last seen, attempt counts, and authentication outcomes
 - Detects successful logins following brute-force activity
 - AbuseIPDB threat intelligence enrichment for public IPs
+- Executive summary with threat level, primary attack type, and MITRE ATT&CK technique mapping
+- Per-IP confidence scoring with a signal-by-signal checklist breakdown
+- Deterministic, template-based per-IP attack narratives (no AI/LLM calls, no network calls)
+- Visual timeline flow per flagged IP, plus the raw log lines behind each finding as evidence
 - Self-contained HTML incident report with inline charts
 - Optional CSV and SQLite export
-- Unit-tested parser, detector, and configuration modules using pytest
+- Unit-tested parser, detector, scoring, and configuration modules using pytest
 
 ## Install
 
@@ -122,6 +126,7 @@ log-analyzer/
 │   └── report/
 │       ├── __init__.py
 │       ├── builder.py      # assembles report context
+│       ├── scoring.py      # confidence scoring, MITRE mapping, narrative generation
 │       ├── renderer.py     # renders the self-contained HTML report
 │       └── template.html   # report template, styling, and inline charts
 ├── data/                   # generated reports and exports (gitignored)
@@ -130,7 +135,8 @@ log-analyzer/
 │   ├── conftest.py         # shared pytest fixtures
 │   ├── test_config.py      # configuration tests
 │   ├── test_detector.py    # detection engine tests
-│   └── test_parser.py      # parser tests
+│   ├── test_parser.py      # parser tests
+│   └── test_scoring.py     # confidence scoring / narrative tests
 └── screenshots/
     └── report.png          # README preview image
 ```
@@ -148,4 +154,4 @@ log-analyzer/
 
 ## Report Preview
 
-![Report preview](screenshots/report.png)
+![Report preview](screenshots/incident-report-overview.png)
