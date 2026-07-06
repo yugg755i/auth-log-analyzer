@@ -11,6 +11,46 @@ from log_analyzer.detector import (
     top_ips,
 )
 from log_analyzer.enrichment import is_malicious
+from log_analyzer.report.scoring import build_executive_summary, build_narrative, score_ip
+
+EVIDENCE_LINE_LIMIT = 8
+
+
+def _collect_evidence(events, ip, bruteforce, limit=EVIDENCE_LINE_LIMIT):
+    ip_events = [e for e in events if e["ip"] == ip]
+
+    window = bruteforce.get(ip)
+    if window:
+        windowed = [
+            e for e in ip_events
+            if window["window_start"] <= e["timestamp"] <= window["window_end"]
+        ]
+        if windowed:
+            ip_events = windowed
+
+    return [e["raw_line"] for e in ip_events[:limit] if e.get("raw_line")]
+
+
+def _timeline_points(events, ip):
+    ip_events = sorted((e for e in events if e["ip"] == ip), key=lambda e: e["timestamp"])
+    if not ip_events:
+        return []
+
+    first = datetime.strptime(ip_events[0]["timestamp"], "%Y-%m-%d %H:%M:%S")
+    last = datetime.strptime(ip_events[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+    duration = (last - first).total_seconds()
+
+    points = []
+    for e in ip_events:
+        ts = datetime.strptime(e["timestamp"], "%Y-%m-%d %H:%M:%S")
+        offset_pct = 0.0 if duration == 0 else round((ts - first).total_seconds() / duration * 100, 2)
+        points.append({
+            "offset_pct": offset_pct,
+            "status": e["status"],
+            "timestamp": e["timestamp"],
+            "user": e["user"],
+        })
+    return points
 
 
 def _hourly_histogram(events):
@@ -63,6 +103,27 @@ def build_report_context(
 
     verdict = _build_verdict(malicious_ips, bruteforce, username_enum)
 
+    ip_scores = {
+        ip: score_ip(ip, bruteforce, username_enum, malicious_ips, timelines.get(ip))
+        for ip in flagged_ips
+    }
+    narratives = {
+        ip: build_narrative(ip, bruteforce, username_enum, malicious_ips, timelines.get(ip))
+        for ip in flagged_ips
+    }
+    evidence = {
+        ip: _collect_evidence(events, ip, bruteforce)
+        for ip in flagged_ips
+    }
+    timeline_points = {
+        ip: _timeline_points(events, ip)
+        for ip in flagged_ips
+    }
+    executive_summary = build_executive_summary(ip_scores)
+    investigation_order = sorted(
+        flagged_ips, key=lambda ip: ip_scores[ip]["score"], reverse=True
+    )
+
     return {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "source_files": [str(f) for f in source_files],
@@ -83,6 +144,12 @@ def build_report_context(
         "timelines": timelines,
         "hourly_histogram": _hourly_histogram(events),
         "verdict": verdict,
+        "ip_scores": ip_scores,
+        "narratives": narratives,
+        "evidence": evidence,
+        "timeline_points": timeline_points,
+        "executive_summary": executive_summary,
+        "investigation_order": investigation_order,
     }
 
 
