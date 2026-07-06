@@ -59,6 +59,28 @@ header {
 .verdict.warn { border-left-color: var(--warning); }
 .verdict.danger { border-left-color: var(--danger); }
 
+/* --- executive summary --- */
+.exec-summary {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 18px 20px; margin-bottom: 24px; display: flex; gap: 24px; flex-wrap: wrap; align-items: center;
+}
+.badge {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 3px; font-weight: 700; white-space: nowrap;
+}
+.badge.level-critical { background: var(--danger); color: var(--bg); }
+.badge.level-high { background: var(--warning); color: var(--bg); }
+.badge.level-medium { background: var(--accent-bright); color: var(--bg); }
+.badge.level-low { background: var(--success); color: var(--bg); }
+.badge.level-informational { background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); }
+.exec-field { display: flex; flex-direction: column; gap: 4px; }
+.exec-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.exec-value { font-size: 13px; }
+.mitre-chip {
+  font-family: var(--mono); font-size: 10px; color: var(--text-muted);
+  border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px; margin-right: 6px; display: inline-block; margin-top: 4px;
+}
+
 .stat-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -87,13 +109,6 @@ section { margin-bottom: 32px; }
 .chart-container { background: var(--surface); border: 1px solid var(--border); padding: 16px; width: 100%; }
 canvas { display: block; width: 100%; }
 
-.ip-block { background: var(--surface); border: 1px solid var(--border); }
-.ip-row { display: flex; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--border); }
-.ip-row:last-child { border-bottom: none; }
-.ip-rank { font-family: var(--mono); font-size: 10px; color: var(--text-muted); width: 24px; }
-.ip-addr { font-family: var(--mono); font-size: 12px; color: var(--accent); flex: 1; }
-.ip-count { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
-
 .table-block { background: var(--surface); border: 1px solid var(--border); width: 100%; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th {
@@ -111,7 +126,106 @@ td.count-fail { color: var(--danger); text-align: right; }
 td.score { color: var(--warning); }
 th.num { text-align: right; }
 
+/* Table Links */
+td.num a { color: var(--accent-bright); text-decoration: none; font-weight: 600; }
+td.num a:hover { text-decoration: underline; }
+
 .empty { padding: 28px 16px; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+
+.ip-block { background: var(--surface); border: 1px solid var(--border); }
+.ip-row { display: flex; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+.ip-row:last-child { border-bottom: none; }
+.ip-rank { font-family: var(--mono); font-size: 10px; color: var(--text-muted); width: 24px; }
+.ip-addr { font-family: var(--mono); font-size: 12px; color: var(--accent); flex: 1; }
+.ip-count { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+
+/* --- Appendix Formatting --- */
+.appendix-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 6px;
+  margin-top: 48px;
+  margin-bottom: 24px;
+}
+
+.appendix-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px;
+  margin-bottom: 32px;
+  scroll-margin-top: 20px; /* Provides breathing room when jumping via anchor links */
+}
+
+@media print {
+  .appendix-section {
+    page-break-before: always;
+  }
+}
+
+.appendix-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+.appendix-section-ip { font-family: var(--mono); font-size: 16px; color: var(--accent-bright); font-weight: 700; }
+.appendix-section-meta { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+
+.narrative { font-size: 13px; color: var(--text); margin-bottom: 20px; line-height: 1.6; }
+
+.checklist { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11.5px; }
+.checklist th { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--surface-alt); }
+.checklist td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+.checklist tr:last-child td { border-bottom: none; }
+.checklist .met-yes { color: var(--success); font-weight: 600; }
+.checklist .met-no { color: var(--text-muted); }
+.checklist .pts { text-align: right; }
+
+/* --- Rebuilt Technical Timeline Layout --- */
+.v-timeline {
+  position: relative;
+  padding-left: 20px;
+  margin-left: 10px;
+  border-left: 2px solid var(--border);
+  margin-bottom: 24px;
+}
+.v-timeline-event { position: relative; margin-bottom: 20px; }
+.v-timeline-event:last-child { margin-bottom: 0; }
+.v-timeline-dot {
+  position: absolute; left: -26px; top: 4px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--text-muted); border: 2px solid var(--surface);
+}
+.v-timeline-event.event-breached .v-timeline-dot { background: var(--danger); box-shadow: 0 0 0 4px rgba(201, 117, 112, 0.2); }
+.v-timeline-event.event-start .v-timeline-dot { background: var(--accent-bright); }
+.v-timeline-event.event-active .v-timeline-dot { background: var(--warning); }
+.v-timeline-meta { font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: flex; gap: 12px; margin-bottom: 2px; }
+.v-timeline-time { color: var(--text); font-weight: 600; }
+.v-timeline-desc { font-size: 12.5px; color: var(--text); }
+
+/* --- Granular Event Evidence Strip --- */
+.timeline-strip-container { margin-top: 10px; margin-bottom: 5px; }
+.timeline-strip {
+  position: relative; height: 12px; background: var(--surface-alt);
+  border: 1px solid var(--border); border-radius: 2px; width: 100%; max-width: 500px;
+}
+.timeline-pt {
+  position: absolute; top: 2px; width: 6px; height: 6px; border-radius: 50%;
+  transform: translateX(-50%);
+}
+.timeline-pt.pt-fail { background: var(--danger); }
+.timeline-pt.pt-ok { background: var(--success); box-shadow: 0 0 4px var(--success); }
+
+.evidence-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+.evidence-block {
+  background: var(--surface-alt); border: 1px solid var(--border); padding: 10px 12px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-muted); overflow-x: auto;
+  white-space: pre; line-height: 1.7;
+}
+.evidence-block .ev-line { color: var(--text); }
 
 footer {
   margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--border);
@@ -133,6 +247,39 @@ footer {
     {{ ctx.verdict }}
   </div>
 
+  <!-- EXECUTIVE SUMMARY -->
+  <div class="exec-summary">
+    <div class="exec-field">
+      <div class="exec-label">Threat Level</div>
+      <div><span class="badge level-{{ ctx.executive_summary.threat_level | lower }}">{{ ctx.executive_summary.threat_level }}</span></div>
+    </div>
+    <div class="exec-field">
+      <div class="exec-label">Confidence</div>
+      <div class="exec-value">{{ ctx.executive_summary.confidence }}%</div>
+    </div>
+    <div class="exec-field">
+      <div class="exec-label">Primary Attack Type</div>
+      <div class="exec-value">{{ ctx.executive_summary.primary_attack_type }}</div>
+    </div>
+    {% if ctx.executive_summary.headline_ip %}
+    <div class="exec-field">
+      <div class="exec-label">Headline IP</div>
+      <div class="exec-value" style="font-family: var(--mono); color: var(--accent-bright);">{{ ctx.executive_summary.headline_ip }}</div>
+    </div>
+    {% endif %}
+    {% if ctx.executive_summary.mitre_techniques %}
+    <div class="exec-field" style="flex-basis: 100%;">
+      <div class="exec-label">MITRE ATT&amp;CK Techniques Observed</div>
+      <div>
+        {% for t in ctx.executive_summary.mitre_techniques %}
+        <span class="mitre-chip">{{ t.id }} &middot; {{ t.name }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- HIGH LEVEL GLOBAL METRICS -->
   <div class="stat-row">
     <div class="stat">
       <div class="stat-label">Total Events</div>
@@ -152,6 +299,7 @@ footer {
     </div>
   </div>
 
+  <!-- ACTIVITY CHARTS -->
   <section>
     <div class="section-title">Activity Overview</div>
     <div class="chart-row">
@@ -166,6 +314,39 @@ footer {
     </div>
   </section>
 
+  <!-- KEY FINDINGS & SUMMARY OF INVESTIGATED HOST ELEMENTS -->
+  {% if ctx.investigation_order %}
+  <section>
+    <div class="section-title">Summary of Flagged Host Elements</div>
+    <div class="table-block">
+      <table>
+        <thead>
+          <tr>
+            <th>Source Host IP</th>
+            <th>Classification / Threat Type</th>
+            <th>Confidence Score</th>
+            <th>Severity Assessment</th>
+            <th class="num">Cross-Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ip in ctx.investigation_order %}
+          {% set s = ctx.ip_scores[ip] %}
+          <tr>
+            <td class="ip" style="font-weight: 600;">{{ ip }}</td>
+            <td>{{ s.attack_type }}</td>
+            <td class="score">{{ s.score }}/100</td>
+            <td><span class="badge level-{{ s.level | lower }}">{{ s.level }}</span></td>
+            <td class="num"><a href="#appendix-{{ loop.index }}">See Appendix {{ loop.index }}</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- DETECTIONS TABLES -->
   <section>
     <div class="section-title">Brute Force Detections (&ge; {{ ctx.bruteforce_threshold }} failed attempts within {{ ctx.bruteforce_window_minutes }}m)</div>
     <div class="table-block">
@@ -209,36 +390,6 @@ footer {
       {% endif %}
     </div>
   </section>
-
-  {% if ctx.timelines %}
-  <section>
-    <div class="section-title">Session Timelines — Flagged IPs</div>
-    <div class="table-block">
-      <table>
-        <thead>
-          <tr>
-            <th>Source IP</th><th>First Seen</th><th>Last Seen</th>
-            <th class="num">Duration</th><th class="num">Attempts</th>
-            <th class="num">Usernames</th><th>Outcome</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for ip, t in ctx.timelines.items() %}
-          <tr>
-            <td class="ip">{{ ip }}</td>
-            <td class="ts">{{ t.first_seen }}</td>
-            <td class="ts">{{ t.last_seen }}</td>
-            <td class="num">{{ t.duration_seconds }}s</td>
-            <td class="num">{{ t.total_attempts }} ({{ t.failed_attempts }} failed / {{ t.accepted_attempts }} accepted)</td>
-            <td class="num">{{ t.unique_usernames }}</td>
-            <td>{% if t.breached %}<span style="color: var(--danger);">breached</span>{% else %}no successful login{% endif %}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-  {% endif %}
 
   {% if ctx.accepted_after_bruteforce %}
   <section>
@@ -296,6 +447,117 @@ footer {
       {% endfor %}
     </div>
   </section>
+
+
+  <!-- ======================================================================= -->
+  <!-- APPENDICES: TECHNICAL EVIDENCE & GRANULAR DOSSIERS                      -->
+  <!-- ======================================================================= -->
+  
+  <h2 class="appendix-title">Technical Evidence Appendices</h2>
+
+  {% if ctx.investigation_order %}
+    {% for ip in ctx.investigation_order %}
+    {% set s = ctx.ip_scores[ip] %}
+    {% set t = ctx.timelines.get(ip) %}
+    
+    <div class="appendix-section" id="appendix-{{ loop.index }}">
+      <div class="appendix-section-header">
+        <span class="appendix-section-ip">Appendix {{ loop.index }}: Dossier for {{ ip }}</span>
+        <span class="appendix-section-meta">
+          Score: <strong>{{ s.score }}/100</strong> &middot; Assessment: <strong>{{ s.level }}</strong>
+        </span>
+      </div>
+
+      <!-- Narrative Section -->
+      <div class="narrative">{{ ctx.narratives[ip] }}</div>
+
+      <!-- Signal Matrix Table -->
+      <table class="checklist">
+        <thead><tr><th>Signal Evaluated</th><th>Detailed Context</th><th class="pts">Points</th></tr></thead>
+        <tbody>
+          {% for row in s.checklist %}
+          <tr>
+            <td class="{% if row.met %}met-yes{% else %}met-no{% endif %}">{% if row.met %}&#10003;{% else %}&#8212;{% endif %} {{ row.signal }}</td>
+            <td>{{ row.detail }}</td>
+            <td class="pts">{{ row.points }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Vertical Timeline Section -->
+      {% if t %}
+      <div style="margin-top: 20px; margin-bottom: 12px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);">
+        Reconstructed Chronological Sequence
+      </div>
+      <div class="v-timeline">
+        
+        <!-- Node 1: Earliest Seen -->
+        <div class="v-timeline-event event-start">
+          <div class="v-timeline-dot"></div>
+          <div class="v-timeline-meta">
+            <span class="v-timeline-time">{{ t.first_seen }}</span>
+            <span>&middot; INITIAL ACTIVITY RECORDED</span>
+          </div>
+          <div class="v-timeline-desc">
+            First authentication request observed from this source host. Across the entire analysis window, activity from this host targeted a total of <strong>{{ t.unique_usernames }}</strong> distinct username variants.
+          </div>
+        </div>
+
+        <!-- Node 2: Volumetric Processing Window (Conditional on having failures) -->
+        {% if t.failed_attempts > 0 %}
+        <div class="v-timeline-event event-active">
+          <div class="v-timeline-dot"></div>
+          <div class="v-timeline-meta">
+            <span class="v-timeline-time">Sustained Activity Window</span>
+            <span>&middot; VOLUMETRIC ANALYSIS</span>
+          </div>
+          <div class="v-timeline-desc">
+            Host initiated a burst sequence containing <strong>{{ t.failed_attempts }}</strong> failed authentication attempts.
+            
+            <!-- Granular Event Strip mapping out the timeline_points array directly -->
+            {% set points = ctx.timeline_points.get(ip, []) %}
+            {% if points %}
+            <div class="timeline-strip-container">
+              <div class="timeline-strip">
+                {% for pt in points %}
+                <div class="timeline-pt {% if pt.status == 'Accepted' %}pt-ok{% else %}pt-fail{% endif %}" style="left: {{ pt.offset_pct }}%;" title="{{ pt.timestamp }} — {{ pt.status }} ({{ pt.user }})"></div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Node 3: Session Outcome Status -->
+        <div class="v-timeline-event {% if t.breached %}event-breached{% endif %}">
+          <div class="v-timeline-dot"></div>
+          <div class="v-timeline-meta">
+            <span class="v-timeline-time">{{ t.last_seen }}</span>
+            <span>&middot; FINAL ANALYSIS STATUS</span>
+          </div>
+          <div class="v-timeline-desc">
+            {% if t.breached %}
+            <span style="color: var(--danger); font-weight: bold;">[COMPROMISE]</span> Accepted password/key login recorded at this timestamp following authentication failures. Indicates successful system compromise.
+            {% else %}
+            <span style="color: var(--success); font-weight: bold;">[CONTAINED]</span> Threat source activity terminated without recording an accepted login event.
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Raw Log Line Blocks -->
+      {% set lines = ctx.evidence.get(ip, []) %}
+      {% if lines %}
+      <div class="evidence-label">Forensic Proof: Raw Line Captures</div>
+      <div class="evidence-block">{% for line in lines %}<span class="ev-line">{{ line }}</span>
+{% endfor %}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% endif %}
 
   <footer>
     Log Analyzer — self-contained forensic triage report. No external network calls are made to render this file.
