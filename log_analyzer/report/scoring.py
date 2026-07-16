@@ -135,7 +135,7 @@ def _attack_type(ip, bruteforce, username_enum, malicious_ips, breached):
     return "Unclassified"
 
 
-def build_narrative(ip, bruteforce, username_enum, malicious_ips, timeline):
+def build_narrative(ip, bruteforce, username_enum, malicious_ips, timeline, geoip=None):
     clauses = []
 
     if ip in bruteforce:
@@ -173,6 +173,12 @@ def build_narrative(ip, bruteforce, username_enum, malicious_ips, timeline):
             f"{ip} is independently flagged by AbuseIPDB at {data.get('abuseConfidenceScore', 0)}% "
             f"confidence based on {data.get('totalReports', 0)} prior report(s){country_clause}."
         )
+
+    if geoip and ip in geoip:
+        g = geoip[ip]
+        bits = [b for b in [g.get("city"), g.get("regionName"), g.get("country")] if b]
+        if bits:
+            clauses.append(f"GeoIP places this host in {', '.join(bits)}.")
 
     if not clauses:
         return f"{ip} did not meet any detection threshold; included for context only."

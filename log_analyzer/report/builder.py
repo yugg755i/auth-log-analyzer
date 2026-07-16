@@ -72,9 +72,11 @@ def build_report_context(
     enum_threshold=5,
     enum_window_minutes=2,
     abuse_data=None,
+    geoip_data=None,
     confidence_threshold=50,
 ):
     abuse_data = abuse_data or {}
+    geoip_data = geoip_data or {}
 
     failed = failed_events(events)
     accepted = accepted_events(events)
@@ -94,7 +96,6 @@ def build_report_context(
     timestamps = [e["timestamp"] for e in events]
     time_range = (min(timestamps), max(timestamps)) if timestamps else (None, None)
 
-    # every IP worth a closer look gets a session timeline
     flagged_ips = set(bruteforce) | set(username_enum) | set(malicious_ips)
     timelines = {
         ip: build_session_timeline(events, ip)
@@ -108,7 +109,7 @@ def build_report_context(
         for ip in flagged_ips
     }
     narratives = {
-        ip: build_narrative(ip, bruteforce, username_enum, malicious_ips, timelines.get(ip))
+        ip: build_narrative(ip, bruteforce, username_enum, malicious_ips, timelines.get(ip), geoip_data)
         for ip in flagged_ips
     }
     evidence = {
@@ -150,6 +151,7 @@ def build_report_context(
         "timeline_points": timeline_points,
         "executive_summary": executive_summary,
         "investigation_order": investigation_order,
+        "geoip": geoip_data,
     }
 
 

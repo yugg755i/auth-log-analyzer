@@ -2,20 +2,21 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Incident Response Triage Report — {{ ctx.generated_at }}</title>
+<title>Incident Investigation Report — {{ ctx.generated_at }}</title>
 <style>
 :root {
-  --bg: #1f1d1a;
-  --surface: #2a2724;
-  --surface-alt: #35312d;
-  --text: #e7e0d7;
-  --text-muted: #a89e92;
-  --accent: #556995;
-  --accent-bright: #7287b5;
-  --success: #929c62;
-  --warning: #cf9f5f;
-  --danger: #c97570;
-  --border: #4a443d;
+  --bg: #222831;
+  --bg-alt: #282e38;
+  --text: #dfd0b8;
+  --text-muted: #948979;
+  
+  --hi-ip: #efd0b8;
+  --hi-user: #e0f0b8;
+  --hi-danger: #ff8a8a;
+  
+  --border: #bfae95;
+  --border-subtle: #393e46;
+  
   --mono: "Consolas", "Menlo", monospace;
   --sans: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -38,14 +39,14 @@ header {
   align-items: baseline;
   justify-content: space-between;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 20px;
 }
 .header-left { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
 .header-left strong { color: var(--text); font-weight: 600; }
 .header-right { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
 
-.page-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+.page-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
 
 .verdict {
   font-family: var(--mono);
@@ -53,183 +54,220 @@ header {
   margin-bottom: 24px;
   font-size: 12px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  background: var(--surface);
+  border-left: 3px solid var(--text-muted);
+  background: var(--bg-alt);
+  font-weight: bold;
 }
-.verdict.warn { border-left-color: var(--warning); }
-.verdict.danger { border-left-color: var(--danger); }
 
-/* --- executive summary --- */
+/* Executive Summary Box */
 .exec-summary {
-  background: var(--surface); border: 1px solid var(--border);
-  padding: 18px 20px; margin-bottom: 24px; display: flex; gap: 24px; flex-wrap: wrap; align-items: center;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  padding: 18px 20px; 
+  margin-bottom: 24px; 
+  display: flex; 
+  gap: 24px; 
+  flex-wrap: wrap; 
+  align-items: center;
 }
 .badge {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
-  padding: 4px 10px; border-radius: 3px; font-weight: 700; white-space: nowrap;
-}
-.badge.level-critical { background: var(--danger); color: var(--bg); }
-.badge.level-high { background: var(--warning); color: var(--bg); }
-.badge.level-medium { background: var(--accent-bright); color: var(--bg); }
-.badge.level-low { background: var(--success); color: var(--bg); }
-.badge.level-informational { background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); }
-.exec-field { display: flex; flex-direction: column; gap: 4px; }
-.exec-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
-.exec-value { font-size: 13px; }
-.mitre-chip {
-  font-family: var(--mono); font-size: 10px; color: var(--text-muted);
-  border: 1px solid var(--border); padding: 2px 8px; border-radius: 3px; margin-right: 6px; display: inline-block; margin-top: 4px;
+  font-family: var(--mono); 
+  font-size: 11px; 
+  letter-spacing: 0.06em; 
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
+.badge.level-critical::before { content: "▲ "; }
+.badge.level-critical { color: var(--hi-danger); font-weight: 900; text-decoration: underline; }
+
+.badge.level-high::before { content: "▪ "; }
+.badge.level-high { color: var(--text); font-weight: 700; text-decoration: none; }
+
+.badge.level-medium { color: var(--text); font-weight: 500; text-decoration: none; }
+.badge.level-low { color: var(--text-muted); font-weight: 400; text-decoration: none; }
+.badge.level-informational { color: var(--text-muted); font-weight: 400; text-decoration: none; }
+
+/* Global Metrics Grid */
 .stat-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
-  background: var(--border);
+  background: var(--border-subtle);
   border: 1px solid var(--border);
   margin-bottom: 32px;
 }
-.stat { background: var(--surface); padding: 14px 18px; }
+.stat { background: var(--bg-alt); padding: 14px 18px; }
 .stat-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
 .stat-value { font-family: var(--mono); font-size: 24px; font-weight: 700; }
-.stat-value.fail { color: var(--danger); }
-.stat-value.ok { color: var(--success); }
+.stat-value.fail { 
+  color: var(--hi-danger); 
+  text-decoration: none;
+}
+.stat-value.ok { color: var(--text-muted); }
 
 section { margin-bottom: 32px; }
 .section-title {
   font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 8px; margin-bottom: 12px;
 }
 
-.chart-row { display: flex; gap: 16px; flex-wrap: wrap; }
-.chart-box { flex: 1; min-width: 300px; }
+/* Charts and Canvas Layout - Fixed Flex Sizing */
+.chart-row { display: flex; gap: 16px; }
+.chart-box { flex: 1 1 0; min-width: 0; }
 .chart-box .cap { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
-.chart-container { background: var(--surface); border: 1px solid var(--border); padding: 16px; width: 100%; }
-canvas { display: block; width: 100%; }
+.chart-container { background: var(--bg-alt); border: 1px solid var(--border); padding: 16px; width: 100%; overflow: hidden; }
+canvas { display: block; width: 100%; max-width: 100%; height: 150px; }
 
-.table-block { background: var(--surface); border: 1px solid var(--border); width: 100%; overflow-x: auto; }
+/* Table Layouts */
+.table-block { background: var(--bg-alt); border: 1px solid var(--border); width: 100%; overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 th {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--text-muted); padding: 9px 16px; text-align: left; font-weight: 500;
-  border-bottom: 1px solid var(--border); background: var(--surface-alt); white-space: nowrap;
+  border-bottom: 1px solid var(--border-subtle); background: var(--bg); white-space: nowrap;
 }
-td { font-family: var(--mono); font-size: 11.5px; padding: 9px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { font-family: var(--mono); font-size: 11.5px; padding: 9px 16px; border-bottom: 1px solid var(--border-subtle); white-space: nowrap; }
+tr:nth-child(even) td { background: var(--bg); }
 tbody tr:last-child td { border-bottom: none; }
+
+/* Table Column Cell Formats */
 td.ts { color: var(--text-muted); }
-td.ip { color: var(--accent); }
-td.user { color: var(--warning); }
+td.ip { color: var(--hi-ip); font-weight: 600; }
+td.user { color: var(--hi-user); font-style: italic; }
 td.num { text-align: right; }
-td.count-fail { color: var(--danger); text-align: right; }
-td.score { color: var(--warning); }
+td.count-fail { color: var(--hi-danger); font-weight: bold; text-align: right; }
+td.score { color: var(--text); font-weight: bold; }
+
 th.num { text-align: right; }
 
-/* Table Links */
-td.num a { color: var(--accent-bright); text-decoration: none; font-weight: 600; }
-td.num a:hover { text-decoration: underline; }
+td.num a { color: var(--text); text-decoration: underline; font-weight: 600; }
+td.num a:hover { color: var(--text-muted); }
 
 .empty { padding: 28px 16px; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
 
-.ip-block { background: var(--surface); border: 1px solid var(--border); }
-.ip-row { display: flex; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--border); }
+/* Top IPs Row List */
+.ip-block { background: var(--bg-alt); border: 1px solid var(--border); }
+.ip-row { display: flex; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--border-subtle); }
+.ip-row:nth-child(even) { background: var(--bg); }
 .ip-row:last-child { border-bottom: none; }
 .ip-rank { font-family: var(--mono); font-size: 10px; color: var(--text-muted); width: 24px; }
-.ip-addr { font-family: var(--mono); font-size: 12px; color: var(--accent); flex: 1; }
+.ip-addr { font-family: var(--mono); font-size: 12px; color: var(--hi-ip); flex: 1; font-weight: 600; }
 .ip-count { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
 
-/* --- Appendix Formatting --- */
+/* Appendix Dossier Section */
 .appendix-title {
   font-size: 16px;
   font-weight: 700;
   color: var(--text);
   border-bottom: 2px solid var(--border);
   padding-bottom: 6px;
-  margin-top: 48px;
-  margin-bottom: 24px;
+  margin-top: 40px;
+  margin-bottom: 20px;
 }
 
 .appendix-section {
-  background: var(--surface);
+  background: var(--bg-alt);
   border: 1px solid var(--border);
   padding: 24px;
-  margin-bottom: 32px;
-  scroll-margin-top: 20px; /* Provides breathing room when jumping via anchor links */
-}
-
-@media print {
-  .appendix-section {
-    page-break-before: always;
-  }
+  margin-bottom: 24px;
+  scroll-margin-top: 20px;
 }
 
 .appendix-section-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 12px;
   margin-bottom: 16px;
 }
-.appendix-section-ip { font-family: var(--mono); font-size: 16px; color: var(--accent-bright); font-weight: 700; }
+.appendix-section-ip { font-family: var(--mono); font-size: 16px; color: var(--hi-ip); font-weight: 700; }
 .appendix-section-meta { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
 
 .narrative { font-size: 13px; color: var(--text); margin-bottom: 20px; line-height: 1.6; }
 
+/* Appendix Evaluation Checklist Table */
 .checklist { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11.5px; }
-.checklist th { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--surface-alt); }
-.checklist td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-family: var(--mono); }
+.checklist th { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border-subtle); background: var(--bg); }
+.checklist td { padding: 6px 10px; border-bottom: 1px solid var(--border-subtle); font-family: var(--mono); }
+.checklist tr:nth-child(even) td { background: var(--bg); }
 .checklist tr:last-child td { border-bottom: none; }
-.checklist .met-yes { color: var(--success); font-weight: 600; }
+.checklist .met-yes { color: var(--hi-danger); font-weight: bold; }
 .checklist .met-no { color: var(--text-muted); }
 .checklist .pts { text-align: right; }
 
-/* --- Rebuilt Technical Timeline Layout --- */
+/* Chronological Activity Timeline */
 .v-timeline {
   position: relative;
   padding-left: 20px;
   margin-left: 10px;
-  border-left: 2px solid var(--border);
+  border-left: 2px solid var(--border-subtle);
   margin-bottom: 24px;
 }
 .v-timeline-event { position: relative; margin-bottom: 20px; }
 .v-timeline-event:last-child { margin-bottom: 0; }
 .v-timeline-dot {
   position: absolute; left: -26px; top: 4px; width: 10px; height: 10px; border-radius: 50%;
-  background: var(--text-muted); border: 2px solid var(--surface);
+  background: var(--text-muted); border: 2px solid var(--bg-alt);
 }
-.v-timeline-event.event-breached .v-timeline-dot { background: var(--danger); box-shadow: 0 0 0 4px rgba(201, 117, 112, 0.2); }
-.v-timeline-event.event-start .v-timeline-dot { background: var(--accent-bright); }
-.v-timeline-event.event-active .v-timeline-dot { background: var(--warning); }
+.v-timeline-event.event-breached .v-timeline-dot { 
+  background: var(--hi-danger); 
+  box-shadow: 0 0 0 4px rgba(255, 138, 138, 0.2); 
+}
+.v-timeline-event.event-start .v-timeline-dot { background: var(--hi-ip); }
+.v-timeline-event.event-active .v-timeline-dot { background: var(--text-muted); }
 .v-timeline-meta { font-family: var(--mono); font-size: 11px; color: var(--text-muted); display: flex; gap: 12px; margin-bottom: 2px; }
 .v-timeline-time { color: var(--text); font-weight: 600; }
 .v-timeline-desc { font-size: 12.5px; color: var(--text); }
 
-/* --- Granular Event Evidence Strip --- */
+/* Timeline Visual Representation Bar */
 .timeline-strip-container { margin-top: 10px; margin-bottom: 5px; }
 .timeline-strip {
-  position: relative; height: 12px; background: var(--surface-alt);
-  border: 1px solid var(--border); border-radius: 2px; width: 100%; max-width: 500px;
+  position: relative; height: 12px; background: var(--bg);
+  border: 1px solid var(--border-subtle); border-radius: 2px; width: 100%; max-width: 500px;
 }
 .timeline-pt {
   position: absolute; top: 2px; width: 6px; height: 6px; border-radius: 50%;
   transform: translateX(-50%);
 }
-.timeline-pt.pt-fail { background: var(--danger); }
-.timeline-pt.pt-ok { background: var(--success); box-shadow: 0 0 4px var(--success); }
+.timeline-pt.pt-fail { background: var(--text-muted); }
+.timeline-pt.pt-ok { background: var(--hi-ip); box-shadow: 0 0 4px var(--hi-ip); }
 
 .evidence-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+
+/* Raw Log Evidence Block */
 .evidence-block {
-  background: var(--surface-alt); border: 1px solid var(--border); padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--border-subtle); padding: 10px 12px;
   font-family: var(--mono); font-size: 10.5px; color: var(--text-muted); overflow-x: auto;
   white-space: pre; line-height: 1.7;
 }
-.evidence-block .ev-line { color: var(--text); }
+.evidence-block .ev-line { display: block; color: var(--text); }
+.evidence-block .ev-line:nth-child(even) { background: var(--bg-alt); }
 
 footer {
-  margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--border);
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--border-subtle);
   font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  
+  .table-block { overflow-x: visible; }
+  table { table-layout: fixed; width: 100%; }
+  td, th { white-space: normal; word-break: break-word; }
+  
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  .chart-container { break-inside: avoid; }
 }
 </style>
 </head>
@@ -241,10 +279,10 @@ footer {
     <div class="header-right">GENERATED {{ ctx.generated_at }}</div>
   </header>
 
-  <h1 class="page-title">Incident Response Triage Report</h1>
+  <h1 class="page-title">Incident Investigation Report</h1>
 
-  <div class="verdict {% if ctx.malicious_ips %}danger{% elif ctx.bruteforce %}warn{% endif %}">
-    {{ ctx.verdict }}
+  <div class="verdict">
+    ASSESSMENT SUMMARY // {{ ctx.verdict }}
   </div>
 
   <!-- EXECUTIVE SUMMARY -->
@@ -264,7 +302,7 @@ footer {
     {% if ctx.executive_summary.headline_ip %}
     <div class="exec-field">
       <div class="exec-label">Headline IP</div>
-      <div class="exec-value" style="font-family: var(--mono); color: var(--accent-bright);">{{ ctx.executive_summary.headline_ip }}</div>
+      <div class="exec-value" style="font-family: var(--mono); color: var(--hi-ip);">{{ ctx.executive_summary.headline_ip }}</div>
     </div>
     {% endif %}
     {% if ctx.executive_summary.mitre_techniques %}
@@ -272,14 +310,14 @@ footer {
       <div class="exec-label">MITRE ATT&amp;CK Techniques Observed</div>
       <div>
         {% for t in ctx.executive_summary.mitre_techniques %}
-        <span class="mitre-chip">{{ t.id }} &middot; {{ t.name }}</span>
+        <span class="mitre-chip" style="font-family: var(--mono); font-size: 11px; background: var(--bg); padding: 4px 8px; border: 1px solid var(--border-subtle); margin-right: 6px; display: inline-block;">{{ t.id }} &middot; {{ t.name }}</span>
         {% endfor %}
       </div>
     </div>
     {% endif %}
   </div>
 
-  <!-- HIGH LEVEL GLOBAL METRICS -->
+  <!-- GLOBAL HIGH-LEVEL METRICS -->
   <div class="stat-row">
     <div class="stat">
       <div class="stat-label">Total Events</div>
@@ -299,22 +337,22 @@ footer {
     </div>
   </div>
 
-  <!-- ACTIVITY CHARTS -->
+  <!-- CANVAS ACTIVITY CHARTS -->
   <section>
     <div class="section-title">Activity Overview</div>
     <div class="chart-row">
       <div class="chart-box">
-        <div class="chart-container"><canvas id="hourlyChart" height="150"></canvas></div>
+        <div class="chart-container"><canvas id="hourlyChart"></canvas></div>
         <div class="cap">Events per hour</div>
       </div>
       <div class="chart-box">
-        <div class="chart-container"><canvas id="topIpChart" height="150"></canvas></div>
+        <div class="chart-container"><canvas id="topIpChart"></canvas></div>
         <div class="cap">Top source IPs by attempt count</div>
       </div>
     </div>
   </section>
 
-  <!-- KEY FINDINGS & SUMMARY OF INVESTIGATED HOST ELEMENTS -->
+  <!-- KEY FINDINGS TABLE -->
   {% if ctx.investigation_order %}
   <section>
     <div class="section-title">Summary of Flagged Host Elements</div>
@@ -333,7 +371,7 @@ footer {
           {% for ip in ctx.investigation_order %}
           {% set s = ctx.ip_scores[ip] %}
           <tr>
-            <td class="ip" style="font-weight: 600;">{{ ip }}</td>
+            <td class="ip">{{ ip }}</td>
             <td>{{ s.attack_type }}</td>
             <td class="score">{{ s.score }}/100</td>
             <td><span class="badge level-{{ s.level | lower }}">{{ s.level }}</span></td>
@@ -436,6 +474,29 @@ footer {
   </section>
 
   <section>
+    <div class="section-title">Geolocation (GeoIP)</div>
+    <div class="table-block">
+      {% if ctx.geoip %}
+      <table>
+        <thead><tr><th>IP</th><th>Country</th><th>Region</th><th>City</th></tr></thead>
+        <tbody>
+          {% for ip, g in ctx.geoip.items() %}
+          <tr>
+            <td class="ip">{{ ip }}</td>
+            <td>{{ g.country or "—" }}</td>
+            <td>{{ g.regionName or "—" }}</td>
+            <td>{{ g.city or "—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">GeoIP lookup skipped or returned no results.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section>
     <div class="section-title">Top Source IPs</div>
     <div class="ip-block">
       {% for ip, count in ctx.top_ips %}
@@ -448,11 +509,7 @@ footer {
     </div>
   </section>
 
-
-  <!-- ======================================================================= -->
-  <!-- APPENDICES: TECHNICAL EVIDENCE & GRANULAR DOSSIERS                      -->
-  <!-- ======================================================================= -->
-  
+  <!-- APPENDICES DETAILED DOSSIERS -->
   <h2 class="appendix-title">Technical Evidence Appendices</h2>
 
   {% if ctx.investigation_order %}
@@ -468,10 +525,8 @@ footer {
         </span>
       </div>
 
-      <!-- Narrative Section -->
       <div class="narrative">{{ ctx.narratives[ip] }}</div>
 
-      <!-- Signal Matrix Table -->
       <table class="checklist">
         <thead><tr><th>Signal Evaluated</th><th>Detailed Context</th><th class="pts">Points</th></tr></thead>
         <tbody>
@@ -485,14 +540,12 @@ footer {
         </tbody>
       </table>
 
-      <!-- Vertical Timeline Section -->
       {% if t %}
       <div style="margin-top: 20px; margin-bottom: 12px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);">
         Reconstructed Chronological Sequence
       </div>
       <div class="v-timeline">
         
-        <!-- Node 1: Earliest Seen -->
         <div class="v-timeline-event event-start">
           <div class="v-timeline-dot"></div>
           <div class="v-timeline-meta">
@@ -504,7 +557,6 @@ footer {
           </div>
         </div>
 
-        <!-- Node 2: Volumetric Processing Window (Conditional on having failures) -->
         {% if t.failed_attempts > 0 %}
         <div class="v-timeline-event event-active">
           <div class="v-timeline-dot"></div>
@@ -515,13 +567,12 @@ footer {
           <div class="v-timeline-desc">
             Host initiated a burst sequence containing <strong>{{ t.failed_attempts }}</strong> failed authentication attempts.
             
-            <!-- Granular Event Strip mapping out the timeline_points array directly -->
             {% set points = ctx.timeline_points.get(ip, []) %}
             {% if points %}
             <div class="timeline-strip-container">
               <div class="timeline-strip">
                 {% for pt in points %}
-                <div class="timeline-pt {% if pt.status == 'Accepted' %}pt-ok{% else %}pt-fail{% endif %}" style="left: {{ pt.offset_pct }}%;" title="{{ pt.timestamp }} — {{ pt.status }} ({{ pt.user }})"></div>
+                <div class="timeline-pt {% if pt.status == 'Accepted' %}pt-ok{% else %}pt-fail{% endif %}" style="left: {{ pt.offset_pct }}%;"></div>
                 {% endfor %}
               </div>
             </div>
@@ -530,7 +581,6 @@ footer {
         </div>
         {% endif %}
 
-        <!-- Node 3: Session Outcome Status -->
         <div class="v-timeline-event {% if t.breached %}event-breached{% endif %}">
           <div class="v-timeline-dot"></div>
           <div class="v-timeline-meta">
@@ -539,28 +589,28 @@ footer {
           </div>
           <div class="v-timeline-desc">
             {% if t.breached %}
-            <span style="color: var(--danger); font-weight: bold;">[COMPROMISE]</span> Accepted password/key login recorded at this timestamp following authentication failures. Indicates successful system compromise.
+            <span style="color: var(--hi-danger); font-weight: bold; text-decoration: underline;">[COMPROMISE]</span> Accepted password/key login recorded at this timestamp following authentication failures.
             {% else %}
-            <span style="color: var(--success); font-weight: bold;">[CONTAINED]</span> Threat source activity terminated without recording an accepted login event.
+            <span style="color: var(--text-muted); font-weight: bold;">[CONTAINED]</span> Threat source activity terminated without recording an accepted login event.
             {% endif %}
           </div>
         </div>
       </div>
       {% endif %}
 
-      <!-- Raw Log Line Blocks -->
       {% set lines = ctx.evidence.get(ip, []) %}
       {% if lines %}
       <div class="evidence-label">Forensic Proof: Raw Line Captures</div>
-      <div class="evidence-block">{% for line in lines %}<span class="ev-line">{{ line }}</span>
-{% endfor %}</div>
+      <div class="evidence-block">
+        {% for line in lines %}<span class="ev-line">{{ line }}</span>{% endfor %}
+      </div>
       {% endif %}
     </div>
     {% endfor %}
   {% endif %}
 
   <footer>
-    Log Analyzer — self-contained forensic triage report. No external network calls are made to render this file.
+    Log Analyzer — self-contained forensic investigation report.
   </footer>
 
 </div>
@@ -570,29 +620,60 @@ footer {
   const topIps = {{ top_ip_json | safe }};
 
   window.addEventListener("load", () => {
-    if (hourly.length) drawChart("hourlyChart", hourly.map(d => d.hour.split(" ")[1] || d.hour), hourly.map(d => d.count), "#556995");
-    if (topIps.length) drawChart("topIpChart", topIps.map(d => d[0]), topIps.map(d => d[1]), "#cf9f5f");
+    window.chartsReady = false;
+    if (hourly.length) drawChart("hourlyChart", hourly.map(d => d.hour.split(" ")[1] || d.hour), hourly.map(d => d.count), "#dfd0b8");
+    if (topIps.length) drawChart("topIpChart", topIps.map(d => d[0]), topIps.map(d => d[1]), "#948979");
+    window.chartsReady = true;
   });
 
-function drawChart(canvasId, labels, values, color) {
+  function drawChart(canvasId, labels, values, color) {
     const canvas = document.getElementById(canvasId);
     const container = canvas.parentElement;
-    canvas.width = container.clientWidth;
+    
+    const computedStyle = window.getComputedStyle(container);
+    const paddingX = parseFloat(computedStyle.paddingLeft) + parseFloat(computedStyle.paddingRight);
+    
+    const renderScale = 2;
+    const displayWidth = Math.max(100, Math.floor(container.clientWidth - paddingX));
+    const displayHeight = 150; 
+
+    canvas.width = displayWidth * renderScale;
+    canvas.height = displayHeight * renderScale;
+    canvas.style.width = displayWidth + "px";
+    canvas.style.height = displayHeight + "px";
 
     const ctx = canvas.getContext("2d");
-    const w = canvas.width, h = canvas.height;
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+    
+    const w = displayWidth;
+    const h = displayHeight;
 
     if (canvasId === "topIpChart") {
       const maxBars = 5;
       const displayLabels = labels.slice(0, maxBars);
       const displayValues = values.slice(0, maxBars);
 
-      const padL = 95, padB = 15, padR = 85, padT = 15;
+      ctx.font = "10px Consolas, Menlo, monospace";
+      
+      let maxLabelWidth = 60; 
+      displayLabels.forEach(lbl => {
+        const m = ctx.measureText(lbl).width;
+        if (m > maxLabelWidth) maxLabelWidth = m;
+      });
+
+      const widestValue = Math.max(...displayValues, 1);
+      const maxTextMetrics = ctx.measureText(`${widestValue} attempts`).width;
+      
+      const padL = maxLabelWidth + 12; 
+      const padB = 18; 
+      const padR = Math.ceil(maxTextMetrics) + 18; 
+      const padT = 15;
+      
       const chartW = w - padL - padR, chartH = h - padT - padB;
       const max = Math.max(...displayValues, 1);
 
       ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = "#4a443d";
+      ctx.strokeStyle = "#393e46";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(padL, padT);
@@ -611,21 +692,22 @@ function drawChart(canvasId, labels, values, color) {
         ctx.fillStyle = color;
         ctx.fillRect(x, y, barW, barH);
 
-        ctx.fillStyle = "#e7e0d7";
+        ctx.fillStyle = "#dfd0b8";
         ctx.font = "10px Consolas, Menlo, monospace";
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
         ctx.fillText(displayLabels[i], padL - 8, y + barH / 2);
 
-        ctx.fillStyle = "#a89e92";
+        ctx.fillStyle = "#948979";
         ctx.font = "10px Consolas, Menlo, monospace";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.fillText(`${v} attempts`, x + barW + 8, y + barH / 2);
       });
 
-      ctx.fillStyle = "#a89e92";
+      ctx.fillStyle = "#948979";
       ctx.font = "10px Consolas, Menlo, monospace";
+      ctx.textBaseline = "alphabetic";
       ctx.textAlign = "center";
       ctx.fillText("0", padL, h - 4);
       ctx.fillText(max, w - padR, h - 4);
@@ -636,7 +718,7 @@ function drawChart(canvasId, labels, values, color) {
       const max = Math.max(...values, 1);
 
       ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = "#4a443d";
+      ctx.strokeStyle = "#393e46";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(padL, padT);
@@ -657,17 +739,18 @@ function drawChart(canvasId, labels, values, color) {
         ctx.fillRect(x, y, barW, barH);
 
         if (i % labelEvery === 0) {
-          ctx.fillStyle = "#a89e92";
+          ctx.fillStyle = "#948979";
           ctx.font = "10px Consolas, Menlo, monospace";
           ctx.textAlign = "center";
           ctx.fillText(labels[i], x + barW / 2, h - 8);
         }
       });
 
-      ctx.fillStyle = "#a89e92";
+      ctx.fillStyle = "#948979";
       ctx.font = "10px Consolas, Menlo, monospace";
       ctx.textAlign = "right";
       ctx.fillText(max, padL - 8, padT + 4);
+      ctx.textAlign = "right";
       ctx.fillText("0", padL - 8, h - padB);
     }
   }
