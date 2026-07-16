@@ -8,6 +8,7 @@ DEFAULTS = {
     "enum_threshold": 5,
     "enum_window_minutes": 2,
     "confidence_threshold": 50,
+    "cache_ttl_hours": 168,
 }
 
 AUTO_DISCOVER_FILENAME = "config/loganalyzer.yaml"

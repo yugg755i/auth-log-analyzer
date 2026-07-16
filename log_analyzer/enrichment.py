@@ -1,4 +1,5 @@
 import ipaddress
+from log_analyzer.cache import get_cached, set_cached
 
 import requests
 
@@ -29,16 +30,23 @@ def check_abuseipdb(ip, api_key):
         return None
 
 
-def enrich_ips(ips, api_key):
+def enrich_ips(ips, api_key, cache=None, cache_ttl_hours=168):
     results = {}
-
     for ip in ips:
         if not is_public_ip(ip):
             continue
 
+        if cache is not None:
+            cached = get_cached(cache, "abuseipdb", ip, cache_ttl_hours)
+            if cached is not None:
+                results[ip] = cached
+                continue
+
         data = check_abuseipdb(ip, api_key)
         if data is not None:
             results[ip] = data
+            if cache is not None:
+                set_cached(cache, "abuseipdb", ip, data)
 
     return results
 
