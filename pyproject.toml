@@ -5,6 +5,7 @@ dependencies = ["requests", "python-dotenv", "jinja2", "pyyaml"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
+pdf = ["playwright"]
 
 [project.scripts]
 loganalyzer = "log_analyzer.cli:main"

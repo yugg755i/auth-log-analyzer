@@ -15,7 +15,8 @@ from log_analyzer.input_resolver import resolve_log_paths
 from log_analyzer.parser import parse_logs
 from log_analyzer.report.builder import build_report_context
 from log_analyzer.report.renderer import render_report
-
+from log_analyzer.cache import load_cache, save_cache
+from log_analyzer.geoip import enrich_geoip
 
 def parse_date_arg(value):
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
@@ -56,6 +57,11 @@ def build_arg_parser():
     parser.add_argument("--no-enrich", action="store_true", help="skip AbuseIPDB threat intel lookups")
     parser.add_argument("--export-csv", metavar="PATH", help="also export parsed events to CSV")
     parser.add_argument("--export-db", action="store_true", help="also persist parsed events to data/alerts.db")
+    parser.add_argument("--no-geoip", action="store_true", help="skip GeoIP enrichment")
+    parser.add_argument("--no-cache", action="store_true", help="disable enrichment caching")
+    parser.add_argument("--cache-ttl-hours", type=int, default=None,
+                        help="reuse cached AbuseIPDB/GeoIP results younger than this (default: 168 = 1 week)")
+    parser.add_argument("--export-pdf", metavar="PATH", help="also export the report as PDF (requires playwright)")
     return parser
 
 
@@ -66,6 +72,7 @@ def resolve_thresholds(args, config):
         "enum_threshold": args.enum_threshold if args.enum_threshold is not None else config["enum_threshold"],
         "enum_window_minutes": args.enum_window if args.enum_window is not None else config["enum_window_minutes"],
         "confidence_threshold": args.confidence_threshold if args.confidence_threshold is not None else config["confidence_threshold"],
+        "cache_ttl_hours": args.cache_ttl_hours if args.cache_ttl_hours is not None else config["cache_ttl_hours"],
     }
 
 
@@ -96,16 +103,27 @@ def main():
 
     print(f"Parsed {len(events)} events across {len(log_paths)} file(s).")
 
+    cache = None if args.no_cache else load_cache()
+
     abuse_data = {}
+    geoip_data = {}
     if not args.no_enrich:
         load_dotenv()
         api_key = os.getenv("ABUSEIPDB_API_KEY")
         if api_key:
             unique_ips = {e["ip"] for e in events}
             print(f"Checking {len(unique_ips)} unique IP(s) against AbuseIPDB...")
-            abuse_data = enrich_ips(unique_ips, api_key)
+            abuse_data = enrich_ips(unique_ips, api_key, cache=cache, cache_ttl_hours=thresholds["cache_ttl_hours"])
         else:
             print("no ABUSEIPDB_API_KEY set — skipping threat intel enrichment.")
+
+    if not args.no_geoip:
+        unique_ips = {e["ip"] for e in events}
+        print(f"Looking up GeoIP for {len(unique_ips)} unique IP(s)...")
+        geoip_data = enrich_geoip(unique_ips, cache=cache, cache_ttl_hours=thresholds["cache_ttl_hours"])
+
+    if cache is not None:
+        save_cache(cache)
 
     ctx = build_report_context(
         events,
@@ -115,12 +133,21 @@ def main():
         enum_threshold=thresholds["enum_threshold"],
         enum_window_minutes=thresholds["enum_window_minutes"],
         abuse_data=abuse_data,
+        geoip_data=geoip_data,
         confidence_threshold=thresholds["confidence_threshold"],
     )
 
     render_report(ctx, args.output)
     print(f"\nReport written to {args.output}")
     print(ctx["verdict"])
+
+    if args.export_pdf:
+        from log_analyzer.pdf_export import export_pdf
+        try:
+            export_pdf(args.output, args.export_pdf)
+            print(f"PDF exported to {args.export_pdf}")
+        except RuntimeError as e:
+            print(f"warning: {e}")
 
     if args.export_csv:
         database.export_csv(events, args.export_csv)
