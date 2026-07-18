@@ -3,6 +3,11 @@ import sqlite3
 
 DEFAULT_DB_PATH = "data/alerts.db"
 
+CSV_FIELDNAMES = [
+    "timestamp", "log_type", "status", "actor", "actor_type",
+    "invalid_user", "user", "ip", "port", "source_file",
+]
+
 
 def create_database(db_path=DEFAULT_DB_PATH):
     conn = sqlite3.connect(db_path)
@@ -11,7 +16,10 @@ def create_database(db_path=DEFAULT_DB_PATH):
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT,
+            log_type TEXT,
             status TEXT,
+            actor TEXT,
+            actor_type TEXT,
             invalid_user INTEGER,
             user TEXT,
             ip TEXT,
@@ -28,8 +36,8 @@ def insert_events(events, db_path=DEFAULT_DB_PATH):
     cursor = conn.cursor()
     cursor.executemany(
         """
-        INSERT INTO events (timestamp, status, invalid_user, user, ip, port, source_file)
-        VALUES (:timestamp, :status, :invalid_user, :user, :ip, :port, :source_file)
+        INSERT INTO events (timestamp, log_type, status, actor, actor_type, invalid_user, user, ip, port, source_file)
+        VALUES (:timestamp, :log_type, :status, :actor, :actor_type, :invalid_user, :user, :ip, :port, :source_file)
         """,
         [{**e, "invalid_user": int(e["invalid_user"])} for e in events],
     )
@@ -39,9 +47,6 @@ def insert_events(events, db_path=DEFAULT_DB_PATH):
 
 def export_csv(events, output_path):
     with open(output_path, "w", newline="") as file:
-        writer = csv.DictWriter(
-            file,
-            fieldnames=["timestamp", "status", "invalid_user", "user", "ip", "port", "source_file"],
-        )
+        writer = csv.DictWriter(file, fieldnames=CSV_FIELDNAMES, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(events)

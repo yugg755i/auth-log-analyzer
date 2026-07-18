@@ -36,6 +36,8 @@ def build_arg_parser():
     )
     parser.add_argument("path", help="log file, directory, or glob pattern (supports .gz)")
     parser.add_argument("-o", "--output", default="report.html", help="report output path (default: report.html)")
+    parser.add_argument("--log-type", choices=["sshd", "sudo", "su"], default=None,
+                         help="force parsing as a single log format instead of auto-detecting per line")
     parser.add_argument("--since", type=parse_date_arg, help="only include events on/after this time")
     parser.add_argument("--until", type=parse_date_arg, help="only include events on/before this time")
 
@@ -94,7 +96,7 @@ def main():
         sys.exit(1)
 
     print(f"Log Analyzer — parsing {len(log_paths)} file(s)...")
-    events = parse_logs(log_paths)
+    events = parse_logs(log_paths, log_type=args.log_type)
     events = filter_by_time(events, since=args.since, until=args.until)
 
     if not events:
@@ -111,14 +113,17 @@ def main():
         load_dotenv()
         api_key = os.getenv("ABUSEIPDB_API_KEY")
         if api_key:
-            unique_ips = {e["ip"] for e in events}
+            unique_ips = { e["ip"] for e in events if e["ip"] is not None }
             print(f"Checking {len(unique_ips)} unique IP(s) against AbuseIPDB...")
             abuse_data = enrich_ips(unique_ips, api_key, cache=cache, cache_ttl_hours=thresholds["cache_ttl_hours"])
         else:
             print("no ABUSEIPDB_API_KEY set — skipping threat intel enrichment.")
 
     if not args.no_geoip:
-        unique_ips = {e["ip"] for e in events}
+        for e in events:
+            if e["log_type"] == "sshd" and e["ip"] is None:
+                print(e)
+        unique_ips = { e["ip"] for e in events if e["ip"] is not None }
         print(f"Looking up GeoIP for {len(unique_ips)} unique IP(s)...")
         geoip_data = enrich_geoip(unique_ips, cache=cache, cache_ttl_hours=thresholds["cache_ttl_hours"])
 
