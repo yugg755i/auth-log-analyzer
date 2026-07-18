@@ -27,7 +27,7 @@ def test_score_ip_accumulates_points_across_signals():
     ]
     timeline = build_session_timeline(events, "1.1.1.1")
 
-    result = score_ip("1.1.1.1", bruteforce, username_enum, malicious_ips, timeline)
+    result = score_ip("1.1.1.1", "sshd", bruteforce, username_enum, malicious_ips, timeline)
 
     assert result["score"] == 100
     assert result["level"] == "Critical"
@@ -36,7 +36,7 @@ def test_score_ip_accumulates_points_across_signals():
 
 
 def test_score_ip_no_signals_scores_zero():
-    result = score_ip("9.9.9.9", {}, {}, {}, None)
+    result = score_ip("9.9.9.9", "sshd", {}, {}, {}, None)
     assert result["score"] == 0
     assert result["level"] == "Informational"
     assert all(not row["met"] for row in result["checklist"])
@@ -44,9 +44,22 @@ def test_score_ip_no_signals_scores_zero():
 
 def test_score_ip_partial_signals_only_awards_matched_points():
     bruteforce = {"2.2.2.2": {"count": 8, "window_start": "x", "window_end": "y"}}
-    result = score_ip("2.2.2.2", bruteforce, {}, {}, None)
+    result = score_ip("2.2.2.2", "sshd", bruteforce, {}, {}, None)
     assert result["score"] == 30
     assert result["level"] == "Medium"
+
+
+def test_score_ip_sudo_bruteforce_maps_to_sudo_specific_technique():
+    bruteforce = {"alice": {"count": 8, "window_start": "x", "window_end": "y"}}
+    result = score_ip("alice", "sudo", bruteforce, {}, {}, None)
+    assert result["score"] == 30
+    assert result["mitre"][0]["id"] == "T1548.003"
+
+
+def test_score_ip_su_bruteforce_maps_to_password_guessing():
+    bruteforce = {"root": {"count": 8, "window_start": "x", "window_end": "y"}}
+    result = score_ip("root", "su", bruteforce, {}, {}, None)
+    assert result["mitre"][0]["id"] == "T1110.001"
 
 
 def test_build_narrative_mentions_bruteforce_and_breach():
@@ -57,29 +70,35 @@ def test_build_narrative_mentions_bruteforce_and_breach():
     ]
     timeline = build_session_timeline(events, "1.1.1.1")
 
-    narrative = build_narrative("1.1.1.1", bruteforce, {}, {}, timeline)
+    narrative = build_narrative("1.1.1.1", "sshd", bruteforce, {}, {}, timeline)
 
     assert "1.1.1.1" in narrative
     assert "10 failed logins" in narrative
     assert "succeeded" in narrative
 
 
+def test_build_narrative_uses_sudo_specific_wording():
+    bruteforce = {"alice": {"count": 6, "window_start": "x", "window_end": "y"}}
+    narrative = build_narrative("alice", "sudo", bruteforce, {}, {}, None)
+    assert "sudo authentication attempts" in narrative
+
+
 def test_build_narrative_handles_no_signals():
-    narrative = build_narrative("3.3.3.3", {}, {}, {}, None)
+    narrative = build_narrative("3.3.3.3", "sshd", {}, {}, {}, None)
     assert "3.3.3.3" in narrative
     assert "did not meet any detection threshold" in narrative
 
 
 def test_build_executive_summary_picks_highest_scoring_ip():
     ip_scores = {
-        "1.1.1.1": score_ip("1.1.1.1", {"1.1.1.1": {"count": 10, "window_start": "x", "window_end": "y"}}, {}, {}, None),
-        "2.2.2.2": score_ip("2.2.2.2", {}, {}, {"2.2.2.2": {"abuseConfidenceScore": 90, "totalReports": 5}}, None),
+        "1.1.1.1": score_ip("1.1.1.1", "sshd", {"1.1.1.1": {"count": 10, "window_start": "x", "window_end": "y"}}, {}, {}, None),
+        "2.2.2.2": score_ip("2.2.2.2", "sshd", {}, {}, {"2.2.2.2": {"abuseConfidenceScore": 90, "totalReports": 5}}, None),
     }
     summary = build_executive_summary(ip_scores)
 
     assert summary["headline_ip"] == "2.2.2.2"
     assert summary["confidence"] == 40
-    assert summary["mitre_techniques"]  
+    assert summary["mitre_techniques"]
 
 
 def test_build_executive_summary_empty_when_nothing_flagged():

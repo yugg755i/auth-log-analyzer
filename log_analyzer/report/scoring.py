@@ -6,10 +6,20 @@ SIGNAL_POINTS = {
 }
 
 MITRE_TECHNIQUES = {
-    "bruteforce": {"id": "T1110.001", "name": "Brute Force: Password Guessing"},
-    "username_enum": {"id": "T1589.001", "name": "Gather Victim Identity Information: Credentials"},
-    "malicious_ip": {"id": "T1071", "name": "Application Layer Protocol (known malicious infrastructure)"},
-    "breach": {"id": "T1078", "name": "Valid Accounts"},
+    ("sshd", "bruteforce"): {"id": "T1110.001", "name": "Brute Force: Password Guessing"},
+    ("sshd", "username_enum"): {"id": "T1589.001", "name": "Gather Victim Identity Information: Credentials"},
+    ("sshd", "malicious_ip"): {"id": "T1071", "name": "Application Layer Protocol (known malicious infrastructure)"},
+    ("sshd", "breach"): {"id": "T1078", "name": "Valid Accounts"},
+
+    ("sudo", "bruteforce"): {"id": "T1548.003", "name": "Abuse Elevation Control Mechanism: Sudo and Sudo Caching"},
+    ("sudo", "username_enum"): {"id": "T1589.001", "name": "Gather Victim Identity Information: Credentials"},
+    ("sudo", "malicious_ip"): {"id": "T1071", "name": "Application Layer Protocol (known malicious infrastructure)"},
+    ("sudo", "breach"): {"id": "T1078.003", "name": "Valid Accounts: Local Accounts"},
+
+    ("su", "bruteforce"): {"id": "T1110.001", "name": "Brute Force: Password Guessing"},
+    ("su", "username_enum"): {"id": "T1589.001", "name": "Gather Victim Identity Information: Credentials"},
+    ("su", "malicious_ip"): {"id": "T1071", "name": "Application Layer Protocol (known malicious infrastructure)"},
+    ("su", "breach"): {"id": "T1078.003", "name": "Valid Accounts: Local Accounts"},
 }
 
 THREAT_LEVEL_BANDS = (
@@ -20,6 +30,10 @@ THREAT_LEVEL_BANDS = (
 )
 
 
+def _technique(log_type, signal):
+    return MITRE_TECHNIQUES.get((log_type, signal), MITRE_TECHNIQUES[("sshd", signal)])
+
+
 def threat_level(score):
     for floor, label in THREAT_LEVEL_BANDS:
         if score >= floor:
@@ -27,13 +41,13 @@ def threat_level(score):
     return "Informational"
 
 
-def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
+def score_ip(actor, log_type, bruteforce, username_enum, malicious_ips, timeline):
     checklist = []
     techniques = []
     score = 0
 
-    if ip in malicious_ips:
-        data = malicious_ips[ip]
+    if actor in malicious_ips:
+        data = malicious_ips[actor]
         pts = SIGNAL_POINTS["malicious_ip"]
         score += pts
         checklist.append({
@@ -43,7 +57,7 @@ def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
             "points": pts,
             "met": True,
         })
-        techniques.append(MITRE_TECHNIQUES["malicious_ip"])
+        techniques.append(_technique(log_type, "malicious_ip"))
     else:
         checklist.append({
             "signal": "Threat intel match (AbuseIPDB)",
@@ -52,8 +66,8 @@ def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
             "met": False,
         })
 
-    if ip in bruteforce:
-        bf = bruteforce[ip]
+    if actor in bruteforce:
+        bf = bruteforce[actor]
         pts = SIGNAL_POINTS["bruteforce"]
         score += pts
         checklist.append({
@@ -62,7 +76,7 @@ def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
             "points": pts,
             "met": True,
         })
-        techniques.append(MITRE_TECHNIQUES["bruteforce"])
+        techniques.append(_technique(log_type, "bruteforce"))
     else:
         checklist.append({
             "signal": "Time-windowed brute-force pattern",
@@ -71,8 +85,8 @@ def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
             "met": False,
         })
 
-    if ip in username_enum:
-        ue = username_enum[ip]
+    if actor in username_enum:
+        ue = username_enum[actor]
         pts = SIGNAL_POINTS["username_enum"]
         score += pts
         checklist.append({
@@ -81,7 +95,7 @@ def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
             "points": pts,
             "met": True,
         })
-        techniques.append(MITRE_TECHNIQUES["username_enum"])
+        techniques.append(_technique(log_type, "username_enum"))
     else:
         checklist.append({
             "signal": "Username enumeration",
@@ -100,7 +114,7 @@ def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
             "points": pts,
             "met": True,
         })
-        techniques.append(MITRE_TECHNIQUES["breach"])
+        techniques.append(_technique(log_type, "breach"))
     else:
         checklist.append({
             "signal": "Successful login on this IP",
@@ -112,41 +126,52 @@ def score_ip(ip, bruteforce, username_enum, malicious_ips, timeline):
     score = min(score, 100)
 
     return {
-        "ip": ip,
+        "ip": actor,
+        "actor": actor,
+        "log_type": log_type,
         "score": score,
         "level": threat_level(score),
         "checklist": checklist,
         "mitre": techniques,
-        "attack_type": _attack_type(ip, bruteforce, username_enum, malicious_ips, breached),
+        "attack_type": _attack_type(actor, log_type, bruteforce, username_enum, malicious_ips, breached),
     }
 
 
-def _attack_type(ip, bruteforce, username_enum, malicious_ips, breached):
-    if breached and ip in bruteforce:
-        return "Brute-force with successful compromise"
-    if ip in bruteforce and ip in username_enum:
-        return "Credential stuffing / brute-force with username enumeration"
-    if ip in bruteforce:
-        return "SSH brute-force"
-    if ip in username_enum:
-        return "Username enumeration"
-    if ip in malicious_ips:
-        return "Known malicious source (no local pattern match)"
+def _attack_type(actor, log_type, bruteforce, username_enum, malicious_ips, breached):
+    if log_type == "sshd":
+        if breached and actor in bruteforce:
+            return "Brute-force with successful compromise"
+        if actor in bruteforce and actor in username_enum:
+            return "Credential stuffing / brute-force with username enumeration"
+        if actor in bruteforce:
+            return "SSH brute-force"
+        if actor in username_enum:
+            return "Username enumeration"
+        if actor in malicious_ips:
+            return "Known malicious source (no local pattern match)"
+        return "Unclassified"
+
+    label = "sudo" if log_type == "sudo" else "su"
+    if breached and actor in bruteforce:
+        return f"Local privilege escalation via {label} with successful compromise"
+    if actor in bruteforce:
+        return f"Repeated failed {label} attempts (possible local brute-force)"
     return "Unclassified"
 
 
-def build_narrative(ip, bruteforce, username_enum, malicious_ips, timeline, geoip=None):
+def build_narrative(actor, log_type, bruteforce, username_enum, malicious_ips, timeline, geoip=None):
     clauses = []
+    verb = {"sshd": "logins", "sudo": "sudo authentication attempts", "su": "su attempts"}[log_type]
 
-    if ip in bruteforce:
-        bf = bruteforce[ip]
+    if actor in bruteforce:
+        bf = bruteforce[actor]
         clauses.append(
-            f"{ip} attempted {bf['count']} failed logins within a "
+            f"{actor} attempted {bf['count']} failed {verb} within a "
             f"{bf['window_start']} \u2192 {bf['window_end']} window, consistent with automated brute-force."
         )
 
-    if ip in username_enum:
-        ue = username_enum[ip]
+    if actor in username_enum:
+        ue = username_enum[actor]
         clauses.append(
             f"It also tried {ue['distinct_usernames']} distinct usernames "
             f"({', '.join(ue['usernames'][:5])}{'...' if len(ue['usernames']) > 5 else ''}) "
@@ -155,33 +180,39 @@ def build_narrative(ip, bruteforce, username_enum, malicious_ips, timeline, geoi
 
     if timeline:
         if timeline["breached"]:
-            clauses.append(
-                f"The attack succeeded \u2014 a login was accepted after "
-                f"{timeline['failed_attempts']} failed attempt(s), indicating a compromised or guessed credential."
-            )
+            if log_type == "sshd":
+                clauses.append(
+                    f"The attack succeeded \u2014 a login was accepted after "
+                    f"{timeline['failed_attempts']} failed attempt(s), indicating a compromised or guessed credential."
+                )
+            else:
+                clauses.append(
+                    f"Privilege escalation succeeded \u2014 a {log_type} session was authorized after "
+                    f"{timeline['failed_attempts']} failed attempt(s)."
+                )
         else:
             clauses.append(
                 f"No successful login was recorded across {timeline['total_attempts']} attempt(s) "
                 f"over {timeline['duration_seconds']}s."
             )
 
-    if ip in malicious_ips:
-        data = malicious_ips[ip]
+    if actor in malicious_ips:
+        data = malicious_ips[actor]
         country = data.get("countryCode")
         country_clause = f", originating from {country}" if country else ""
         clauses.append(
-            f"{ip} is independently flagged by AbuseIPDB at {data.get('abuseConfidenceScore', 0)}% "
+            f"{actor} is independently flagged by AbuseIPDB at {data.get('abuseConfidenceScore', 0)}% "
             f"confidence based on {data.get('totalReports', 0)} prior report(s){country_clause}."
         )
 
-    if geoip and ip in geoip:
-        g = geoip[ip]
+    if geoip and actor in geoip:
+        g = geoip[actor]
         bits = [b for b in [g.get("city"), g.get("regionName"), g.get("country")] if b]
         if bits:
             clauses.append(f"GeoIP places this host in {', '.join(bits)}.")
 
     if not clauses:
-        return f"{ip} did not meet any detection threshold; included for context only."
+        return f"{actor} did not meet any detection threshold; included for context only."
 
     return " ".join(clauses)
 
@@ -194,6 +225,7 @@ def build_executive_summary(ip_scores):
             "primary_attack_type": "No significant activity detected",
             "mitre_techniques": [],
             "headline_ip": None,
+            "headline_actor_type": None,
         }
 
     ranked = sorted(ip_scores.values(), key=lambda s: s["score"], reverse=True)
@@ -212,5 +244,6 @@ def build_executive_summary(ip_scores):
         "confidence": top["score"],
         "primary_attack_type": top["attack_type"],
         "mitre_techniques": techniques,
-        "headline_ip": top["ip"],
+        "headline_ip": top["actor"],
+        "headline_actor_type": "ip" if top["log_type"] == "sshd" else "user",
     }
