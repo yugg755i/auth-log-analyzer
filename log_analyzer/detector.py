@@ -24,7 +24,7 @@ def filter_by_time(events, since=None, until=None):
 
 
 def count_ips(events):
-    return Counter(event["ip"] for event in events)
+    return Counter(event["ip"] for event in events if event.get("ip"))
 
 
 def top_ips(events, n=10):
@@ -40,14 +40,14 @@ def accepted_events(events):
 
 
 def detect_bruteforce(events, threshold=5, window_minutes=2):
-    by_ip = defaultdict(list)
+    by_actor = defaultdict(list)
     for e in failed_events(events):
-        by_ip[e["ip"]].append(_parse_ts(e))
+        by_actor[e["actor"]].append(_parse_ts(e))
 
     window = timedelta(minutes=window_minutes)
     flagged = {}
 
-    for ip, timestamps in by_ip.items():
+    for actor, timestamps in by_actor.items():
         timestamps.sort()
         left = 0
         best_count = 0
@@ -62,7 +62,7 @@ def detect_bruteforce(events, threshold=5, window_minutes=2):
                 best_start, best_end = timestamps[left], timestamps[right]
 
         if best_count >= threshold:
-            flagged[ip] = {
+            flagged[actor] = {
                 "count": best_count,
                 "window_start": best_start.strftime(TS_FORMAT),
                 "window_end": best_end.strftime(TS_FORMAT),
@@ -72,14 +72,14 @@ def detect_bruteforce(events, threshold=5, window_minutes=2):
 
 
 def detect_username_enumeration(events, threshold=5, window_minutes=2):
-    by_ip = defaultdict(list)
+    by_actor = defaultdict(list)
     for e in events:
-        by_ip[e["ip"]].append((_parse_ts(e), e["user"]))
+        by_actor[e["actor"]].append((_parse_ts(e), e["user"]))
 
     window = timedelta(minutes=window_minutes)
     flagged = {}
 
-    for ip, entries in by_ip.items():
+    for actor, entries in by_actor.items():
         entries.sort(key=lambda pair: pair[0])
         left = 0
         best_users = set()
@@ -94,7 +94,7 @@ def detect_username_enumeration(events, threshold=5, window_minutes=2):
                 best_start, best_end = entries[left][0], entries[right][0]
 
         if len(best_users) >= threshold:
-            flagged[ip] = {
+            flagged[actor] = {
                 "distinct_usernames": len(best_users),
                 "usernames": sorted(best_users),
                 "window_start": best_start.strftime(TS_FORMAT),
@@ -104,22 +104,23 @@ def detect_username_enumeration(events, threshold=5, window_minutes=2):
     return flagged
 
 
-def build_session_timeline(events, ip):
-    ip_events = sorted((e for e in events if e["ip"] == ip), key=lambda e: e["timestamp"])
-    if not ip_events:
+def build_session_timeline(events, actor):
+    actor_events = sorted((e for e in events if e["actor"] == actor), key=lambda e: e["timestamp"])
+    if not actor_events:
         return None
 
-    failed = [e for e in ip_events if e["status"] == "Failed"]
-    accepted = [e for e in ip_events if e["status"] == "Accepted"]
-    usernames = sorted({e["user"] for e in ip_events})
-    duration_seconds = int((_parse_ts(ip_events[-1]) - _parse_ts(ip_events[0])).total_seconds())
+    failed = [e for e in actor_events if e["status"] == "Failed"]
+    accepted = [e for e in actor_events if e["status"] == "Accepted"]
+    usernames = sorted({e["user"] for e in actor_events})
+    duration_seconds = int((_parse_ts(actor_events[-1]) - _parse_ts(actor_events[0])).total_seconds())
 
     return {
-        "ip": ip,
-        "first_seen": ip_events[0]["timestamp"],
-        "last_seen": ip_events[-1]["timestamp"],
+        "actor": actor,
+        "ip": actor,
+        "first_seen": actor_events[0]["timestamp"],
+        "last_seen": actor_events[-1]["timestamp"],
         "duration_seconds": duration_seconds,
-        "total_attempts": len(ip_events),
+        "total_attempts": len(actor_events),
         "failed_attempts": len(failed),
         "accepted_attempts": len(accepted),
         "unique_usernames": len(usernames),
