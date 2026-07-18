@@ -1,5 +1,5 @@
-from collections import Counter
-from datetime import datetime
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
 
 from log_analyzer.detector import (
     accepted_events,
@@ -16,32 +16,32 @@ from log_analyzer.report.scoring import build_executive_summary, build_narrative
 EVIDENCE_LINE_LIMIT = 8
 
 
-def _collect_evidence(events, ip, bruteforce, limit=EVIDENCE_LINE_LIMIT):
-    ip_events = [e for e in events if e["ip"] == ip]
+def _collect_evidence(events, actor, bruteforce, limit=EVIDENCE_LINE_LIMIT):
+    actor_events = [e for e in events if e["actor"] == actor]
 
-    window = bruteforce.get(ip)
+    window = bruteforce.get(actor)
     if window:
         windowed = [
-            e for e in ip_events
+            e for e in actor_events
             if window["window_start"] <= e["timestamp"] <= window["window_end"]
         ]
         if windowed:
-            ip_events = windowed
+            actor_events = windowed
 
-    return [e["raw_line"] for e in ip_events[:limit] if e.get("raw_line")]
+    return [e["raw_line"] for e in actor_events[:limit] if e.get("raw_line")]
 
 
-def _timeline_points(events, ip):
-    ip_events = sorted((e for e in events if e["ip"] == ip), key=lambda e: e["timestamp"])
-    if not ip_events:
+def _timeline_points(events, actor):
+    actor_events = sorted((e for e in events if e["actor"] == actor), key=lambda e: e["timestamp"])
+    if not actor_events:
         return []
 
-    first = datetime.strptime(ip_events[0]["timestamp"], "%Y-%m-%d %H:%M:%S")
-    last = datetime.strptime(ip_events[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
+    first = datetime.strptime(actor_events[0]["timestamp"], "%Y-%m-%d %H:%M:%S")
+    last = datetime.strptime(actor_events[-1]["timestamp"], "%Y-%m-%d %H:%M:%S")
     duration = (last - first).total_seconds()
 
     points = []
-    for e in ip_events:
+    for e in actor_events:
         ts = datetime.strptime(e["timestamp"], "%Y-%m-%d %H:%M:%S")
         offset_pct = 0.0 if duration == 0 else round((ts - first).total_seconds() / duration * 100, 2)
         points.append({
@@ -64,6 +64,43 @@ def _hourly_histogram(events):
     return [{"hour": k, "count": buckets[k]} for k in ordered_keys]
 
 
+def _partition_by_log_type(events):
+    by_log_type = defaultdict(list)
+    for e in events:
+        by_log_type[e["log_type"]].append(e)
+    return by_log_type
+
+
+def _log_type_breakdown(by_log_type):
+    return {
+        log_type: {
+            "total": len(evs),
+            "failed": len(failed_events(evs)),
+            "accepted": len(accepted_events(evs)),
+        }
+        for log_type, evs in by_log_type.items()
+    }
+
+
+def _accepted_after_bruteforce(by_log_type, combined_bruteforce, grace_minutes):
+    results = []
+    grace = timedelta(minutes=grace_minutes)
+
+    for data in combined_bruteforce.values():
+        log_type, actor = data["log_type"], data["actor"]
+        window_end = datetime.strptime(data["window_end"], "%Y-%m-%d %H:%M:%S")
+        cutoff = window_end + grace
+
+        for e in by_log_type.get(log_type, []):
+            if e["actor"] != actor or e["status"] != "Accepted":
+                continue
+            ts = datetime.strptime(e["timestamp"], "%Y-%m-%d %H:%M:%S")
+            if ts <= cutoff:
+                results.append(e)
+
+    return results
+
+
 def build_report_context(
     events,
     source_files,
@@ -81,49 +118,66 @@ def build_report_context(
     failed = failed_events(events)
     accepted = accepted_events(events)
 
-    bruteforce = detect_bruteforce(
-        events, threshold=bruteforce_threshold, window_minutes=bruteforce_window_minutes
-    )
-    username_enum = detect_username_enumeration(
-        events, threshold=enum_threshold, window_minutes=enum_window_minutes
-    )
+    by_log_type = _partition_by_log_type(events)
+    ssh_events = by_log_type.get("sshd", [])
 
     malicious_ips = {
         ip: data for ip, data in abuse_data.items()
         if is_malicious(data, confidence_threshold)
     }
 
+    bruteforce_by_type = {}
+    username_enum_by_type = {}
+    combined_bruteforce = {}
+    combined_username_enum = {}
+
+    for log_type, type_events in by_log_type.items():
+        bf = detect_bruteforce(type_events, threshold=bruteforce_threshold, window_minutes=bruteforce_window_minutes)
+        ue = detect_username_enumeration(type_events, threshold=enum_threshold, window_minutes=enum_window_minutes)
+        bruteforce_by_type[log_type] = bf
+        username_enum_by_type[log_type] = ue
+        for actor, data in bf.items():
+            combined_bruteforce[f"{log_type}::{actor}"] = {**data, "log_type": log_type, "actor": actor}
+        for actor, data in ue.items():
+            combined_username_enum[f"{log_type}::{actor}"] = {**data, "log_type": log_type, "actor": actor}
+
+    malicious_by_type = defaultdict(dict)
+    malicious_by_type["sshd"] = malicious_ips  # AbuseIPDB enrichment only ever applies to sshd's IP actors
+
     timestamps = [e["timestamp"] for e in events]
     time_range = (min(timestamps), max(timestamps)) if timestamps else (None, None)
 
-    flagged_ips = set(bruteforce) | set(username_enum) | set(malicious_ips)
-    timelines = {
-        ip: build_session_timeline(events, ip)
-        for ip in sorted(flagged_ips, key=lambda ip: bruteforce.get(ip, {}).get("count", 0), reverse=True)
-    }
+    flagged_keys = set(combined_bruteforce) | set(combined_username_enum)
+    flagged_keys |= {f"sshd::{ip}" for ip in malicious_ips}
 
-    verdict = _build_verdict(malicious_ips, bruteforce, username_enum)
+    def _key_parts(key):
+        log_type, actor = key.split("::", 1)
+        return log_type, actor
 
-    ip_scores = {
-        ip: score_ip(ip, bruteforce, username_enum, malicious_ips, timelines.get(ip))
-        for ip in flagged_ips
-    }
-    narratives = {
-        ip: build_narrative(ip, bruteforce, username_enum, malicious_ips, timelines.get(ip), geoip_data)
-        for ip in flagged_ips
-    }
-    evidence = {
-        ip: _collect_evidence(events, ip, bruteforce)
-        for ip in flagged_ips
-    }
-    timeline_points = {
-        ip: _timeline_points(events, ip)
-        for ip in flagged_ips
-    }
+    timelines = {}
+    ip_scores = {}
+    narratives = {}
+    evidence = {}
+    timeline_points = {}
+
+    for key in flagged_keys:
+        log_type, actor = _key_parts(key)
+        type_events = by_log_type.get(log_type, [])
+        bf = bruteforce_by_type.get(log_type, {})
+        ue = username_enum_by_type.get(log_type, {})
+        mal = malicious_by_type.get(log_type, {})
+
+        timeline = build_session_timeline(type_events, actor)
+        timelines[key] = timeline
+        ip_scores[key] = score_ip(actor, log_type, bf, ue, mal, timeline)
+        narratives[key] = build_narrative(actor, log_type, bf, ue, mal, timeline, geoip_data if log_type == "sshd" else None)
+        evidence[key] = _collect_evidence(type_events, actor, bf)
+        timeline_points[key] = _timeline_points(type_events, actor)
+
     executive_summary = build_executive_summary(ip_scores)
-    investigation_order = sorted(
-        flagged_ips, key=lambda ip: ip_scores[ip]["score"], reverse=True
-    )
+    investigation_order = sorted(flagged_keys, key=lambda k: ip_scores[k]["score"], reverse=True)
+
+    verdict = _build_verdict(malicious_ips, combined_bruteforce, combined_username_enum)
 
     return {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -132,16 +186,17 @@ def build_report_context(
         "total_events": len(events),
         "total_failed": len(failed),
         "total_accepted": len(accepted),
-        "unique_ips": len(count_ips(events)),
-        "top_ips": top_ips(events, n=10),
-        "bruteforce": sorted(bruteforce.items(), key=lambda kv: -kv[1]["count"]),
+        "unique_ips": len(count_ips(ssh_events)),
+        "top_ips": top_ips(ssh_events, n=10),
+        "log_type_breakdown": _log_type_breakdown(by_log_type),
+        "bruteforce": sorted(combined_bruteforce.items(), key=lambda kv: -kv[1]["count"]),
         "bruteforce_threshold": bruteforce_threshold,
         "bruteforce_window_minutes": bruteforce_window_minutes,
-        "username_enum": sorted(username_enum.items(), key=lambda kv: -kv[1]["distinct_usernames"]),
+        "username_enum": sorted(combined_username_enum.items(), key=lambda kv: -kv[1]["distinct_usernames"]),
         "enum_threshold": enum_threshold,
         "enum_window_minutes": enum_window_minutes,
         "malicious_ips": malicious_ips,
-        "accepted_after_bruteforce": _accepted_after_bruteforce(events, bruteforce),
+        "accepted_after_bruteforce": _accepted_after_bruteforce(by_log_type, combined_bruteforce, grace_minutes=bruteforce_window_minutes),
         "timelines": timelines,
         "hourly_histogram": _hourly_histogram(events),
         "verdict": verdict,
@@ -155,23 +210,34 @@ def build_report_context(
     }
 
 
-def _build_verdict(malicious_ips, bruteforce, username_enum):
-    parts = []
+def _build_verdict(malicious_ips, combined_bruteforce, combined_username_enum):
+    if not (malicious_ips or combined_bruteforce or combined_username_enum):
+        return (
+            "No evidence of brute-force activity, username enumeration, "
+            "or confirmed malicious infrastructure was identified during "
+            "the analysis window."
+        )
+
+    findings = []
+
     if malicious_ips:
-        parts.append(f"{len(malicious_ips)} IP(s) confirmed malicious via threat intel")
-    if bruteforce:
-        parts.append(f"{len(bruteforce)} IP(s) show time-windowed brute-force patterns")
-    if username_enum:
-        parts.append(f"{len(username_enum)} IP(s) show username enumeration")
+        findings.append(
+            f"Threat intelligence confirmed {len(malicious_ips)} malicious "
+            f"source {'IP' if len(malicious_ips) == 1 else 'IPs'}"
+        )
 
-    if not parts:
-        return "No brute-force, enumeration, or confirmed-malicious activity detected in this window."
+    if combined_bruteforce:
+        findings.append(
+            f"Brute-force authentication activity was detected from "
+            f"{len(combined_bruteforce)} "
+            f"{'actor' if len(combined_bruteforce) == 1 else 'actors'}"
+        )
 
-    return ", ".join(parts) + "."
+    if combined_username_enum:
+        findings.append(
+            f"Username enumeration was observed from "
+            f"{len(combined_username_enum)} "
+            f"{'actor' if len(combined_username_enum) == 1 else 'actors'}"
+        )
 
-
-def _accepted_after_bruteforce(events, bruteforce_ips):
-    if not bruteforce_ips:
-        return []
-
-    return [e for e in events if e["status"] == "Accepted" and e["ip"] in bruteforce_ips]
+    return ". ".join(findings) + "."

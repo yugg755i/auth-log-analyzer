@@ -48,28 +48,98 @@ header {
 
 .page-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
 
-.verdict {
-  font-family: var(--mono);
-  padding: 12px 16px;
-  margin-bottom: 24px;
-  font-size: 12px;
+.assessment-block {
+  background: var(--bg-alt);
   border: 1px solid var(--border);
   border-left: 3px solid var(--text-muted);
-  background: var(--bg-alt);
-  font-weight: bold;
+  padding: 18px 20px;
+  margin-bottom: 28px;
 }
 
-/* Executive Summary Box */
-.exec-summary {
+.verdict-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.verdict-body {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.assessment-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  row-gap: 6px;
+  column-gap: 32px;
+  margin-top: 8px;
+}
+.assessment-meta dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  align-self: center;
+}
+.assessment-meta dd {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* MITRE Section Container Box */
+.mitre-container {
   background: var(--bg-alt);
   border: 1px solid var(--border);
-  padding: 18px 20px; 
-  margin-bottom: 24px; 
-  display: flex; 
-  gap: 24px; 
-  flex-wrap: wrap; 
-  align-items: center;
+  padding: 16px 20px;
+  margin-bottom: 32px;
 }
+.mitre-container .section-title {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 12px;
+}
+
+.mitre-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mitre-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border-subtle);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  border-radius: 3px;
+}
+
+.mitre-chip:hover {
+  border-color: var(--border);
+}
+
+.mitre-id {
+  color: var(--hi-ip);
+  font-weight: 700;
+}
+
+.mitre-name {
+  color: var(--text-muted);
+}
+
 .badge {
   font-family: var(--mono); 
   font-size: 11px; 
@@ -78,10 +148,8 @@ header {
   white-space: nowrap;
 }
 
-.badge.level-critical::before { content: "▲ "; }
 .badge.level-critical { color: var(--hi-danger); font-weight: 900; text-decoration: underline; }
 
-.badge.level-high::before { content: "▪ "; }
 .badge.level-high { color: var(--text); font-weight: 700; text-decoration: none; }
 
 .badge.level-medium { color: var(--text); font-weight: 500; text-decoration: none; }
@@ -114,7 +182,7 @@ section { margin-bottom: 32px; }
   padding-bottom: 8px; margin-bottom: 12px;
 }
 
-/* Charts and Canvas Layout - Fixed Flex Sizing */
+/* Charts and Canvas Layout */
 .chart-row { display: flex; gap: 16px; }
 .chart-box { flex: 1 1 0; min-width: 0; }
 .chart-box .cap { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 6px; }
@@ -281,40 +349,26 @@ footer {
 
   <h1 class="page-title">Incident Investigation Report</h1>
 
-  <div class="verdict">
-    ASSESSMENT SUMMARY // {{ ctx.verdict }}
-  </div>
-
-  <!-- EXECUTIVE SUMMARY -->
-  <div class="exec-summary">
-    <div class="exec-field">
-      <div class="exec-label">Threat Level</div>
-      <div><span class="badge level-{{ ctx.executive_summary.threat_level | lower }}">{{ ctx.executive_summary.threat_level }}</span></div>
-    </div>
-    <div class="exec-field">
-      <div class="exec-label">Confidence</div>
-      <div class="exec-value">{{ ctx.executive_summary.confidence }}%</div>
-    </div>
-    <div class="exec-field">
-      <div class="exec-label">Primary Attack Type</div>
-      <div class="exec-value">{{ ctx.executive_summary.primary_attack_type }}</div>
-    </div>
-    {% if ctx.executive_summary.headline_ip %}
-    <div class="exec-field">
-      <div class="exec-label">Headline IP</div>
-      <div class="exec-value" style="font-family: var(--mono); color: var(--hi-ip);">{{ ctx.executive_summary.headline_ip }}</div>
-    </div>
-    {% endif %}
-    {% if ctx.executive_summary.mitre_techniques %}
-    <div class="exec-field" style="flex-basis: 100%;">
-      <div class="exec-label">MITRE ATT&amp;CK Techniques Observed</div>
-      <div>
-        {% for t in ctx.executive_summary.mitre_techniques %}
-        <span class="mitre-chip" style="font-family: var(--mono); font-size: 11px; background: var(--bg); padding: 4px 8px; border: 1px solid var(--border-subtle); margin-right: 6px; display: inline-block;">{{ t.id }} &middot; {{ t.name }}</span>
-        {% endfor %}
-      </div>
-    </div>
-    {% endif %}
+  <!-- ASSESSMENT BLOCK -->
+  <div class="assessment-block">
+    <div class="verdict-title">Assessment Summary</div>
+    <div class="verdict-body">{{ ctx.verdict }}</div>
+    
+    <dl class="assessment-meta">
+      <dt>Threat Level</dt>
+      <dd><span class="badge level-{{ ctx.executive_summary.threat_level | lower }}">{{ ctx.executive_summary.threat_level }}</span></dd>
+      
+      <dt>Confidence</dt>
+      <dd>{{ ctx.executive_summary.confidence }}%</dd>
+      
+      <dt>Primary Attack Type</dt>
+      <dd>{{ ctx.executive_summary.primary_attack_type }}</dd>
+      
+      {% if ctx.executive_summary.headline_ip %}
+      <dt>Highest-Risk Source</dt>
+      <dd style="color: var(--hi-ip);">{{ ctx.executive_summary.headline_ip }}</dd>
+      {% endif %}
+    </dl>
   </div>
 
   <!-- GLOBAL HIGH-LEVEL METRICS -->
@@ -337,6 +391,21 @@ footer {
     </div>
   </div>
 
+  <!-- OBSERVED ATT&CK TECHNIQUES -->
+  {% if ctx.executive_summary.mitre_techniques %}
+  <div class="mitre-container">
+    <div class="section-title">Observed ATT&CK Techniques</div>
+    <div class="mitre-list">
+        {% for t in ctx.executive_summary.mitre_techniques %}
+        <div class="mitre-chip">
+            <span class="mitre-id">{{ t.id }}</span>
+            <span class="mitre-name">{{ t.name }}</span>
+        </div>
+        {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <!-- CANVAS ACTIVITY CHARTS -->
   <section>
     <div class="section-title">Activity Overview</div>
@@ -355,12 +424,13 @@ footer {
   <!-- KEY FINDINGS TABLE -->
   {% if ctx.investigation_order %}
   <section>
-    <div class="section-title">Summary of Flagged Host Elements</div>
+    <div class="section-title">Investigation Findings</div>
     <div class="table-block">
       <table>
         <thead>
           <tr>
-            <th>Source Host IP</th>
+            <th>Source</th>
+            <th>Format</th>
             <th>Classification / Threat Type</th>
             <th>Confidence Score</th>
             <th>Severity Assessment</th>
@@ -368,14 +438,15 @@ footer {
           </tr>
         </thead>
         <tbody>
-          {% for ip in ctx.investigation_order %}
-          {% set s = ctx.ip_scores[ip] %}
+          {% for key in ctx.investigation_order %}
+          {% set s = ctx.ip_scores[key] %}
           <tr>
-            <td class="ip">{{ ip }}</td>
+            <td class="ip">{{ s.actor }}</td>
+            <td class="user">{{ s.log_type }}</td>
             <td>{{ s.attack_type }}</td>
             <td class="score">{{ s.score }}/100</td>
             <td><span class="badge level-{{ s.level | lower }}">{{ s.level }}</span></td>
-            <td class="num"><a href="#appendix-{{ loop.index }}">See Appendix {{ loop.index }}</a></td>
+            <td class="num"><a href="#finding-{{ loop.index }}">See Finding {{ loop.index }}</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -390,11 +461,12 @@ footer {
     <div class="table-block">
       {% if ctx.bruteforce %}
       <table>
-        <thead><tr><th>Source IP</th><th class="num">Failed Attempts</th><th>Densest Window</th></tr></thead>
+        <thead><tr><th>Actor</th><th>Format</th><th class="num">Failed Attempts</th><th>Densest Window</th></tr></thead>
         <tbody>
-          {% for ip, info in ctx.bruteforce %}
+          {% for key, info in ctx.bruteforce %}
           <tr>
-            <td class="ip">{{ ip }}</td>
+            <td class="ip">{{ info.actor }}</td>
+            <td class="user">{{ info.log_type }}</td>
             <td class="count-fail">{{ info.count }}</td>
             <td class="ts">{{ info.window_start }} &rarr; {{ info.window_end }}</td>
           </tr>
@@ -412,11 +484,12 @@ footer {
     <div class="table-block">
       {% if ctx.username_enum %}
       <table>
-        <thead><tr><th>Source IP</th><th class="num">Distinct Usernames</th><th>Usernames Tried</th></tr></thead>
+        <thead><tr><th>Actor</th><th>Format</th><th class="num">Distinct Usernames</th><th>Usernames Tried</th></tr></thead>
         <tbody>
-          {% for ip, info in ctx.username_enum %}
+          {% for key, info in ctx.username_enum %}
           <tr>
-            <td class="ip">{{ ip }}</td>
+            <td class="ip">{{ info.actor }}</td>
+            <td class="user">{{ info.log_type }}</td>
             <td class="count-fail">{{ info.distinct_usernames }}</td>
             <td class="user">{{ info.usernames | join(", ") }}</td>
           </tr>
@@ -434,14 +507,15 @@ footer {
     <div class="section-title">Accepted Login From a Brute-Forcing IP</div>
     <div class="table-block">
       <table>
-        <thead><tr><th>Timestamp</th><th>Source IP</th><th>User</th><th class="num">Port</th></tr></thead>
+        <thead><tr><th>Timestamp</th><th>Format</th><th>Actor</th><th>User</th><th class="num">Port</th></tr></thead>
         <tbody>
           {% for e in ctx.accepted_after_bruteforce %}
           <tr>
             <td class="ts">{{ e.timestamp }}</td>
-            <td class="ip">{{ e.ip }}</td>
-            <td class="user">{{ e.user }}</td>
-            <td class="num">{{ e.port }}</td>
+            <td class="user">{{ e.log_type }}</td>
+            <td class="ip">{{ e.actor }}</td>
+            <td class="user">{{ e.user if e.user != e.actor else "—" }}</td>
+            <td class="num">{{ e.port or "—" }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -509,23 +583,23 @@ footer {
     </div>
   </section>
 
-  <!-- APPENDICES DETAILED DOSSIERS -->
-  <h2 class="appendix-title">Technical Evidence Appendices</h2>
+  <!-- INVESTIGATION DETAILS -->
+  <h2 class="appendix-title">Investigation Details</h2>
 
   {% if ctx.investigation_order %}
-    {% for ip in ctx.investigation_order %}
-    {% set s = ctx.ip_scores[ip] %}
-    {% set t = ctx.timelines.get(ip) %}
+    {% for key in ctx.investigation_order %}
+    {% set s = ctx.ip_scores[key] %}
+    {% set t = ctx.timelines.get(key) %}
     
-    <div class="appendix-section" id="appendix-{{ loop.index }}">
+    <div class="appendix-section" id="finding-{{ loop.index }}">
       <div class="appendix-section-header">
-        <span class="appendix-section-ip">Appendix {{ loop.index }}: Dossier for {{ ip }}</span>
+        <span class="appendix-section-ip">Finding #{{ loop.index }}: Details for {{ s.actor }} <span style="font-size:11px;color:var(--text-muted);font-weight:400;">({{ s.log_type }})</span></span>
         <span class="appendix-section-meta">
           Score: <strong>{{ s.score }}/100</strong> &middot; Assessment: <strong>{{ s.level }}</strong>
         </span>
       </div>
 
-      <div class="narrative">{{ ctx.narratives[ip] }}</div>
+      <div class="narrative">{{ ctx.narratives[key] }}</div>
 
       <table class="checklist">
         <thead><tr><th>Signal Evaluated</th><th>Detailed Context</th><th class="pts">Points</th></tr></thead>
@@ -542,7 +616,7 @@ footer {
 
       {% if t %}
       <div style="margin-top: 20px; margin-bottom: 12px; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);">
-        Reconstructed Chronological Sequence
+        Activity Timeline
       </div>
       <div class="v-timeline">
         
@@ -567,7 +641,7 @@ footer {
           <div class="v-timeline-desc">
             Host initiated a burst sequence containing <strong>{{ t.failed_attempts }}</strong> failed authentication attempts.
             
-            {% set points = ctx.timeline_points.get(ip, []) %}
+            {% set points = ctx.timeline_points.get(key, []) %}
             {% if points %}
             <div class="timeline-strip-container">
               <div class="timeline-strip">
@@ -598,9 +672,9 @@ footer {
       </div>
       {% endif %}
 
-      {% set lines = ctx.evidence.get(ip, []) %}
+      {% set lines = ctx.evidence.get(key, []) %}
       {% if lines %}
-      <div class="evidence-label">Forensic Proof: Raw Line Captures</div>
+      <div class="evidence-label">Supporting Evidence: Raw Line Captures</div>
       <div class="evidence-block">
         {% for line in lines %}<span class="ev-line">{{ line }}</span>{% endfor %}
       </div>
@@ -610,7 +684,7 @@ footer {
   {% endif %}
 
   <footer>
-    Log Analyzer — self-contained forensic investigation report.
+    auth-log-analyzer — forensic investigation report.
   </footer>
 
 </div>
@@ -742,7 +816,7 @@ footer {
           ctx.fillStyle = "#948979";
           ctx.font = "10px Consolas, Menlo, monospace";
           ctx.textAlign = "center";
-          ctx.fillText(labels[i], x + barW / 2, h - 8);
+          ctx.fillText(labels[i], x + barW + 2, h - 8);
         }
       });
 
