@@ -1,6 +1,6 @@
 [project]
-name = "log-analyzer"
-version = "0.5.0"
+name = "auth-log-analyzer"
+version = "0.7.0"
 dependencies = ["requests", "python-dotenv", "jinja2", "pyyaml"]
 
 [project.optional-dependencies]
