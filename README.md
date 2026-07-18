@@ -1,42 +1,78 @@
-# Log Analyzer
+# auth-log-analyzer
 
-A single-command CLI tool for SSH authentication log forensic triage.
-Analyze one or more log files and generate a self-contained HTML incident report with detection results, threat intelligence enrichment, geolocation, and investigation context — optionally exported to PDF.
+A single-command CLI tool for Linux authentication log forensic triage.
+Analyze one or more Linux authentication logs and generate an HTML incident investigation report featuring detection results, threat intelligence enrichment, geolocation, confidence scoring, and supporting forensic evidence.
 
 ```
 logs → parse → detect → enrich → report
 ```
 
-Built around a real incident response workflow: given a collection of SSH authentication logs, quickly identify suspicious activity and produce a report suitable for analyst review.
+Generate a complete investigation report with a single command:
+
+![CLI-gif](screenshots/cli-demo.gif)
+
+Supports SSH (`sshd`), `sudo`, and `su` authentication logs with automatic format detection.
+Built around a real incident response workflow: given a collection of authentication logs, quickly identify suspicious activity and produce a report suitable for analyst review.
+
+## Supported log types
+
+| Log type | Source | Actor | Notes |
+|---|---|---|---|
+| `sshd` | SSH daemon auth log | source IP | brute-force, username enumeration, breach detection |
+| `sudo` | `sudo` PAM auth failures + command execution | invoking username | reliable actor identity — sudo authenticates the caller's own password |
+| `su` | `su` PAM auth failures + successful switches | username | **failures only identify the target account**, not the caller — see caveat below |
+
+Log type is auto-detected per line from the syslog program tag (`sshd[pid]:`, `sudo:`, `su[pid]:`), so a single mixed `auth.log` containing all three works without any flag. Lines from anything else (`cron`, `systemd-logind`, etc.) are skipped. Use `--log-type sshd|sudo|su` to force one format if you need to disambiguate an unusual log or feed it a non-standard file.
+
+**Caveat on `su` failures:** a failed `su` attempt's PAM line reliably logs the *target* account (`user=root`) but the real caller (`ruser=`) is frequently blank on default PAM configs — that's a property of the log format, not a gap in this tool. In practice this means a flagged `su` actor tells you "repeated attempts to escalate to this account," not "who's doing it." `sudo` doesn't have this problem — its failure line authenticates the caller's own password, so the invoking username is always the reliable actor.
 
 ## Features
 
-- A command-line tool for SSH authentication log forensic triage.
-- Parses SSH authentication logs, distinguishing failed, accepted, and invalid-user attempts
+- A command-line tool for authentication log forensic triage across `sshd`, `sudo`, and `su`
+- Parses mixed-format logs, auto-detecting the source program per line (or force one with `--log-type`)
+- Distinguishes failed, accepted, and invalid-user attempts
 - Supports individual files, directories, glob patterns, rotated logs, and `.gz` archives
 - Configurable detection thresholds via YAML configuration
 - Time-range filtering (`--since` / `--until`)
-- Sliding-window SSH brute-force detection
-- Username enumeration detection
+- Sliding-window brute-force detection, grouped by IP for `sshd` and by username for `sudo`/`su`
+- Username enumeration detection (sshd; structurally inert for sudo/su, where the actor and the username are the same field)
 - Session reconstruction with first seen, last seen, attempt counts, and authentication outcomes
-- Detects successful logins following brute-force activity
+- Detects successful logins/privilege escalations following brute-force activity
 - AbuseIPDB threat intelligence enrichment for public IPs
 - GeoIP enrichment (country, region, city) for public IPs via ip-api.com
 - Local caching for AbuseIPDB and GeoIP lookups, with a configurable TTL, so repeat runs don't re-hit external APIs
-- Executive summary with threat level, primary attack type, and MITRE ATT&CK technique mapping
-- Per-IP confidence scoring with a signal-by-signal checklist breakdown
-- Deterministic, rule-based investigation narratives (no AI/LLM-generated content)
-- Visual timeline flow per flagged IP, plus the raw log lines behind each finding as evidence
+- Assessment summary with threat level, confidence scoring, primary attack type, and MITRE ATT&CK technique mapping
+- Per-actor confidence scoring with a signal-by-signal checklist breakdown
+- Deterministic, rule-based investigation narratives (no AI/LLM-generated content), with wording that adapts to log type (logins vs. sudo authentication attempts vs. su attempts)
+- Visual timeline flow per flagged actor, plus the raw log lines behind each finding as evidence
 - Self-contained HTML incident report with inline charts, print-optimized for PDF export
 - Optional PDF export (via Playwright) alongside the HTML report
 - Optional CSV and SQLite export
 - Unit-tested parser, detector, scoring, and configuration modules using pytest
 
+## Report Preview
+
+### Assessment Summary
+
+![Executive Summary](screenshots/executive_summary.png)
+
+### Investigation Findings
+
+![Detection Findings](screenshots/detection_findings.png)
+
+### Investigation Details
+
+![Investigation Details](screenshots/investigation_details.png)
+
+### Threat Intelligence & Geolocation
+
+![Threat Intelligence](screenshots/enrichment.png)
+
 ## Install
 
 ```bash
-git clone https://github.com/yugg755i/log-analyzer.git
-cd log-analyzer
+git clone https://github.com/yugg755i/auth-log-analyzer.git
+cd auth-log-analyzer
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -55,8 +91,6 @@ fine without it, it just skips threat intel enrichment):
 ABUSEIPDB_API_KEY=your_key_here
 ```
 
-GeoIP enrichment uses ip-api.com's free tier and needs no API key.
-
 ### PDF export (optional)
 
 PDF export is an optional extra since it pulls in a headless browser:
@@ -69,7 +103,7 @@ playwright install chromium
 ## Usage
 
 ```bash
-# a single log file
+# a single log file (auto-detects sshd/sudo/su per line)
 loganalyzer logs/auth.log
 
 # a directory of logs (rotated / .gz included)
@@ -77,6 +111,9 @@ loganalyzer logs/ -o incident_report.html
 
 # a glob, restricted to a time window
 loganalyzer "logs/*.log.gz" --since 2026-06-01 --until 2026-06-09
+
+# force a single format instead of auto-detecting (e.g. a non-standard log)
+loganalyzer sudo_only.log --log-type sudo
 
 # tune brute-force detection: 8 failures inside a 5-minute window
 loganalyzer logs/auth.log --threshold 8 --window 5
@@ -106,7 +143,11 @@ loganalyzer logs/auth.log --export-csv out.csv --export-db
 loganalyzer logs/ --config config/loganalyzer.yaml
 ```
 
-Full flag list: `loganalyzer --help`
+See all available options:
+
+```bash
+loganalyzer --help
+```
 
 ## Configuration
 
@@ -114,7 +155,9 @@ Detection thresholds can be customized using a YAML configuration file.
 
 By default the application looks for:
 
+```text
 config/loganalyzer.yaml
+```
 
 Example:
 
@@ -135,20 +178,20 @@ Command-line arguments override configuration values when both are provided.
 ## Project Structure
 
 ```text
-log-analyzer/
+auth-log-analyzer/
 ├── pyproject.toml          # packaging + loganalyzer console script (+ optional [pdf] extra)
 ├── requirements.txt
 ├── README.md
 ├── config/
 │   └── loganalyzer.yaml    # optional detection thresholds and application settings
-├── logs/                   # SSH authentication logs (plain or .gz)
+├── logs/                   # authentication logs (plain or .gz)
 ├── log_analyzer/
 │   ├── __init__.py
 │   ├── cli.py              # CLI entry point and application orchestration
 │   ├── config.py           # configuration loading, validation, and defaults
-│   ├── parser.py           # SSH log parsing with .gz support
+│   ├── parser.py           # sshd/sudo/su log parsing with format auto-detection and .gz support
 │   ├── input_resolver.py   # file, directory, and glob resolution
-│   ├── detector.py         # brute-force detection, username enumeration, session analysis
+│   ├── detector.py         # brute-force detection, username enumeration, session analysis (actor-based)
 │   ├── enrichment.py       # AbuseIPDB threat intelligence enrichment
 │   ├── geoip.py            # GeoIP enrichment via ip-api.com
 │   ├── cache.py            # local TTL-based cache for enrichment lookups
@@ -156,9 +199,9 @@ log-analyzer/
 │   ├── database.py         # optional CSV / SQLite export
 │   └── report/
 │       ├── __init__.py
-│       ├── builder.py      # assembles report context
-│       ├── scoring.py      # confidence scoring, MITRE mapping, narrative generation
-│       ├── renderer.py     # renders the self-contained HTML report
+│       ├── builder.py      # partitions events by log type, assembles report context
+│       ├── scoring.py      # confidence scoring, per-log-type MITRE mapping, narrative generation
+│       ├── renderer.py     # renders the HTML report
 │       └── template.html   # report template, styling, print CSS, and inline charts
 ├── data/                   # generated reports, exports, and enrichment cache (gitignored)
 ├── tests/
@@ -166,12 +209,16 @@ log-analyzer/
 │   ├── conftest.py         # shared pytest fixtures
 │   ├── test_config.py      # configuration tests
 │   ├── test_detector.py    # detection engine tests
-│   ├── test_parser.py      # parser tests
+│   ├── test_parser.py      # sshd parser tests
+│   ├── test_parser_multi.py # sudo/su parser tests, mixed-log-type isolation
 │   └── test_scoring.py     # confidence scoring / narrative tests
 └── screenshots/
-    └── report.png          # README preview image
+    ├── cli-demo.gif
+    ├── executive_summary.png
+    ├── detection_findings.png
+    ├── investigation_details.png
+    └── enrichment.png
 ```
-
 ## Stack
 
 - Python 3
@@ -184,9 +231,3 @@ log-analyzer/
 - SQLite (optional)
 - AbuseIPDB API
 - ip-api.com (GeoIP)
-
-## Report Preview
-
-The generated investigation report includes executive summaries, confidence scoring, MITRE ATT&CK mappings, threat intelligence, geolocation, timelines, investigation dossiers, and raw forensic evidence.
-
-![Report preview](screenshots/incident-report-overview.png)
