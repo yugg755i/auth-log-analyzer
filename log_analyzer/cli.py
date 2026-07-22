@@ -77,6 +77,14 @@ def resolve_thresholds(args, config):
         "cache_ttl_hours": args.cache_ttl_hours if args.cache_ttl_hours is not None else config["cache_ttl_hours"],
     }
 
+def validate_thresholds(thresholds):
+    for key in ("bruteforce_threshold", "bruteforce_window_minutes", "enum_threshold", "enum_window_minutes"):
+        if thresholds[key] <= 0:
+            print(f"error: {key.replace('_', ' ')} must be greater than 0 (got {thresholds[key]})")
+            sys.exit(1)
+    if not (0 <= thresholds["confidence_threshold"] <= 100):
+        print(f"error: confidence threshold must be between 0 and 100 (got {thresholds['confidence_threshold']})")
+        sys.exit(1)
 
 def main():
     args = build_arg_parser().parse_args()
@@ -88,6 +96,7 @@ def main():
         sys.exit(1)
 
     thresholds = resolve_thresholds(args, config)
+    validate_thresholds(thresholds)
 
     try:
         log_paths = resolve_log_paths(args.path)
