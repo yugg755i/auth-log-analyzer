@@ -142,7 +142,7 @@ def build_report_context(
             combined_username_enum[f"{log_type}::{actor}"] = {**data, "log_type": log_type, "actor": actor}
 
     malicious_by_type = defaultdict(dict)
-    malicious_by_type["sshd"] = malicious_ips  # AbuseIPDB enrichment only ever applies to sshd's IP actors
+    malicious_by_type["sshd"] = malicious_ips
 
     timestamps = [e["timestamp"] for e in events]
     time_range = (min(timestamps), max(timestamps)) if timestamps else (None, None)
@@ -213,31 +213,35 @@ def build_report_context(
 def _build_verdict(malicious_ips, combined_bruteforce, combined_username_enum):
     if not (malicious_ips or combined_bruteforce or combined_username_enum):
         return (
-            "No evidence of brute-force activity, username enumeration, "
-            "or confirmed malicious infrastructure was identified during "
-            "the analysis window."
+            "No evidence of brute-force activity, username enumeration, or confirmed malicious "
+            "infrastructure was identified during the analysis window."
         )
 
-    findings = []
-
-    if malicious_ips:
-        findings.append(
-            f"Threat intelligence confirmed {len(malicious_ips)} malicious "
-            f"source {'IP' if len(malicious_ips) == 1 else 'IPs'}"
-        )
+    lead = None
+    trailing = []
 
     if combined_bruteforce:
-        findings.append(
-            f"Brute-force authentication activity was detected from "
-            f"{len(combined_bruteforce)} "
-            f"{'actor' if len(combined_bruteforce) == 1 else 'actors'}"
-        )
+        n = len(combined_bruteforce)
+        lead = f"Brute-force authentication activity was detected from {n} {'actor' if n == 1 else 'actors'}"
 
     if combined_username_enum:
-        findings.append(
-            f"Username enumeration was observed from "
-            f"{len(combined_username_enum)} "
-            f"{'actor' if len(combined_username_enum) == 1 else 'actors'}"
-        )
+        n = len(combined_username_enum)
+        phrase = f"enumeration from {n} {'actor' if n == 1 else 'actors'}"
+        (trailing if lead else None)
+        if lead:
+            trailing.append(phrase)
+        else:
+            lead = f"Username enumeration was observed from {n} {'actor' if n == 1 else 'actors'}"
 
-    return ". ".join(findings) + "."
+    if malicious_ips:
+        n = len(malicious_ips)
+        if lead:
+            trailing.append(f"{n} {'IP' if n == 1 else 'IPs'} independently confirmed malicious via AbuseIPDB")
+        else:
+            lead = f"Threat intelligence confirmed {n} malicious source {'IP' if n == 1 else 'IPs'}"
+
+    if not trailing:
+        return lead + "."
+    if len(trailing) == 1:
+        return f"{lead}, with {trailing[0]}."
+    return f"{lead}, with {', '.join(trailing[:-1])} and {trailing[-1]}."

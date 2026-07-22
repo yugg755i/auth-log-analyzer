@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 SIGNAL_POINTS = {
     "malicious_ip": 40,
     "bruteforce": 30,
@@ -29,6 +31,11 @@ THREAT_LEVEL_BANDS = (
     (1, "Low"),
 )
 
+def _bf_window_minutes(bf):
+    start = datetime.strptime(bf["window_start"], "%Y-%m-%d %H:%M:%S")
+    end = datetime.strptime(bf["window_end"], "%Y-%m-%d %H:%M:%S")
+    minutes = (end - start).total_seconds() / 60
+    return round(minutes, 1) if minutes else 1
 
 def _technique(log_type, signal):
     return MITRE_TECHNIQUES.get((log_type, signal), MITRE_TECHNIQUES[("sshd", signal)])
@@ -160,61 +167,68 @@ def _attack_type(actor, log_type, bruteforce, username_enum, malicious_ips, brea
 
 
 def build_narrative(actor, log_type, bruteforce, username_enum, malicious_ips, timeline, geoip=None):
-    clauses = []
-    verb = {"sshd": "logins", "sudo": "sudo authentication attempts", "su": "su attempts"}[log_type]
+    is_bf = actor in bruteforce
+    is_ue = actor in username_enum
+    is_mal = actor in malicious_ips
+    breached = bool(timeline and timeline.get("breached"))
+    verb = {"sshd": "SSH", "sudo": "sudo", "su": "su"}[log_type]
 
-    if actor in bruteforce:
-        bf = bruteforce[actor]
-        clauses.append(
-            f"{actor} attempted {bf['count']} failed {verb} within a "
-            f"{bf['window_start']} \u2192 {bf['window_end']} window, consistent with automated brute-force."
-        )
+    sentences = []
 
-    if actor in username_enum:
-        ue = username_enum[actor]
-        clauses.append(
-            f"It also tried {ue['distinct_usernames']} distinct usernames "
-            f"({', '.join(ue['usernames'][:5])}{'...' if len(ue['usernames']) > 5 else ''}) "
-            f"in a single window, suggesting username enumeration rather than a single targeted account."
-        )
-
-    if timeline:
-        if timeline["breached"]:
-            if log_type == "sshd":
-                clauses.append(
-                    f"The attack succeeded \u2014 a login was accepted after "
-                    f"{timeline['failed_attempts']} failed attempt(s), indicating a compromised or guessed credential."
-                )
-            else:
-                clauses.append(
-                    f"Privilege escalation succeeded \u2014 a {log_type} session was authorized after "
-                    f"{timeline['failed_attempts']} failed attempt(s)."
-                )
+    if breached:
+        attempts = timeline["failed_attempts"]
+        if log_type == "sshd":
+            sentences.append(f"{actor} gained access to this host after {attempts} failed {verb} attempt(s).")
         else:
-            clauses.append(
-                f"No successful login was recorded across {timeline['total_attempts']} attempt(s) "
-                f"over {timeline['duration_seconds']}s."
-            )
+            sentences.append(f"{actor} obtained {verb} privileges after {attempts} failed attempt(s).")
+    elif is_bf and is_ue:
+        bf, ue = bruteforce[actor], username_enum[actor]
+        sentences.append(
+            f"{actor} combined a {bf['count']}-attempt password-guessing burst with enumeration across "
+            f"{ue['distinct_usernames']} usernames, a pattern typical of credential stuffing."
+        )
+    elif is_bf:
+        bf = bruteforce[actor]
+        sentences.append(
+            f"{actor} made {bf['count']} failed {verb} attempts in under "
+            f"{_bf_window_minutes(bf)} minutes, well past normal retry behavior."
+        )
+    elif is_ue:
+        ue = username_enum[actor]
+        names = ", ".join(ue["usernames"][:5])
+        more = "..." if len(ue["usernames"]) > 5 else ""
+        sentences.append(f"{actor} cycled through {ue['distinct_usernames']} usernames ({names}{more}) rather than targeting one account.")
+    elif is_mal:
+        sentences.append(f"{actor} shows no local attack pattern here but is independently known-bad.")
+    else:
+        return f"{actor} did not meet any detection threshold; included for context only."
 
-    if actor in malicious_ips:
+    if breached and (is_bf or is_ue):
+        parts = []
+        if is_bf:
+            parts.append(f"{bruteforce[actor]['count']} failed attempts")
+        if is_ue:
+            parts.append(f"{username_enum[actor]['distinct_usernames']} usernames tried")
+        sentences.append(f"That followed {' and '.join(parts)}.")
+    elif not breached and timeline:
+        sentences.append(f"No login was accepted across {timeline['total_attempts']} attempt(s).")
+
+    if is_mal and (breached or is_bf or is_ue):
         data = malicious_ips[actor]
         country = data.get("countryCode")
-        country_clause = f", originating from {country}" if country else ""
-        clauses.append(
-            f"{actor} is independently flagged by AbuseIPDB at {data.get('abuseConfidenceScore', 0)}% "
-            f"confidence based on {data.get('totalReports', 0)} prior report(s){country_clause}."
+        loc = f" ({country})" if country else ""
+        sentences.append(
+            f"AbuseIPDB independently lists this host at {data.get('abuseConfidenceScore', 0)}% "
+            f"confidence from {data.get('totalReports', 0)} report(s){loc}."
         )
 
     if geoip and actor in geoip:
         g = geoip[actor]
         bits = [b for b in [g.get("city"), g.get("regionName"), g.get("country")] if b]
         if bits:
-            clauses.append(f"GeoIP places this host in {', '.join(bits)}.")
+            sentences.append(f"Geolocated to {', '.join(bits)}.")
 
-    if not clauses:
-        return f"{actor} did not meet any detection threshold; included for context only."
-
-    return " ".join(clauses)
+    return " ".join(sentences)
 
 
 def build_executive_summary(ip_scores):
