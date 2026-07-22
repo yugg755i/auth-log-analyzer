@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 SIGNAL_POINTS = {
     "malicious_ip": 40,
     "bruteforce": 30,
@@ -30,12 +28,6 @@ THREAT_LEVEL_BANDS = (
     (20, "Medium"),
     (1, "Low"),
 )
-
-def _bf_window_minutes(bf):
-    start = datetime.strptime(bf["window_start"], "%Y-%m-%d %H:%M:%S")
-    end = datetime.strptime(bf["window_end"], "%Y-%m-%d %H:%M:%S")
-    minutes = (end - start).total_seconds() / 60
-    return round(minutes, 1) if minutes else 1
 
 def _technique(log_type, signal):
     return MITRE_TECHNIQUES.get((log_type, signal), MITRE_TECHNIQUES[("sshd", signal)])
@@ -189,17 +181,18 @@ def build_narrative(actor, log_type, bruteforce, username_enum, malicious_ips, t
         )
     elif is_bf:
         bf = bruteforce[actor]
-        sentences.append(
-            f"{actor} made {bf['count']} failed {verb} attempts in under "
-            f"{_bf_window_minutes(bf)} minutes, well past normal retry behavior."
-        )
+        sentences.append(f"{actor} made {bf['count']} failed {verb} attempts, well past normal retry behavior.")
     elif is_ue:
         ue = username_enum[actor]
         names = ", ".join(ue["usernames"][:5])
         more = "..." if len(ue["usernames"]) > 5 else ""
         sentences.append(f"{actor} cycled through {ue['distinct_usernames']} usernames ({names}{more}) rather than targeting one account.")
     elif is_mal:
-        sentences.append(f"{actor} shows no local attack pattern here but is independently known-bad.")
+        data = malicious_ips[actor]
+        sentences.append(
+            f"{actor} shows no local attack pattern here but is flagged by AbuseIPDB at "
+            f"{data.get('abuseConfidenceScore', 0)}% confidence."
+        )
     else:
         return f"{actor} did not meet any detection threshold; included for context only."
 

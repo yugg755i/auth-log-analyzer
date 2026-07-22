@@ -73,20 +73,36 @@ def test_build_narrative_mentions_bruteforce_and_breach():
     narrative = build_narrative("1.1.1.1", "sshd", bruteforce, {}, {}, timeline)
 
     assert "1.1.1.1" in narrative
-    assert "10 failed logins" in narrative
-    assert "succeeded" in narrative
+    assert "gained access" in narrative
+    assert "That followed 10 failed attempts." in narrative
 
 
 def test_build_narrative_uses_sudo_specific_wording():
     bruteforce = {"alice": {"count": 6, "window_start": "x", "window_end": "y"}}
     narrative = build_narrative("alice", "sudo", bruteforce, {}, {}, None)
-    assert "sudo authentication attempts" in narrative
+    assert "failed sudo attempts" in narrative
 
 
 def test_build_narrative_handles_no_signals():
     narrative = build_narrative("3.3.3.3", "sshd", {}, {}, {}, None)
     assert "3.3.3.3" in narrative
     assert "did not meet any detection threshold" in narrative
+
+
+def test_build_narrative_combines_bruteforce_and_enumeration_lead():
+    bruteforce = {"1.1.1.1": {"count": 12, "window_start": "x", "window_end": "y"}}
+    username_enum = {"1.1.1.1": {"distinct_usernames": 7, "usernames": ["a", "b", "c"], "window_start": "x", "window_end": "y"}}
+    narrative = build_narrative("1.1.1.1", "sshd", bruteforce, username_enum, {}, None)
+    assert "credential stuffing" in narrative
+    assert "12-attempt" in narrative
+    assert "7 usernames" in narrative
+
+
+def test_build_narrative_malicious_only_no_local_pattern():
+    malicious_ips = {"5.5.5.5": {"abuseConfidenceScore": 95, "totalReports": 20, "countryCode": "RU"}}
+    narrative = build_narrative("5.5.5.5", "sshd", {}, {}, malicious_ips, None)
+    assert "no local attack pattern" in narrative
+    assert "95%" in narrative
 
 
 def test_build_executive_summary_picks_highest_scoring_ip():
