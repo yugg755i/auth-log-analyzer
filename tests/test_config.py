@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from log_analyzer.config import DEFAULTS, ConfigError, load_config
