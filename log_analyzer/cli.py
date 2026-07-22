@@ -58,6 +58,7 @@ def build_arg_parser():
 
     parser.add_argument("--no-enrich", action="store_true", help="skip AbuseIPDB threat intel lookups")
     parser.add_argument("--export-csv", metavar="PATH", help="also export parsed events to CSV")
+    parser.add_argument("--export-json", metavar="PATH", help="also export parsed events to JSON")
     parser.add_argument("--export-db", action="store_true", help="also persist parsed events to data/alerts.db")
     parser.add_argument("--no-geoip", action="store_true", help="skip GeoIP enrichment")
     parser.add_argument("--no-cache", action="store_true", help="disable enrichment caching")
@@ -166,6 +167,10 @@ def main():
     if args.export_csv:
         database.export_csv(events, args.export_csv)
         print(f"CSV exported to {args.export_csv}")
+
+    if args.export_json:
+        database.export_json(events, args.export_json)
+        print(f"JSON exported to {args.export_json}")
 
     if args.export_db:
         os.makedirs("data", exist_ok=True)

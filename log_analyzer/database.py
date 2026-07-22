@@ -1,5 +1,6 @@
 import csv
 import sqlite3
+import json
 
 DEFAULT_DB_PATH = "data/alerts.db"
 
@@ -50,3 +51,12 @@ def export_csv(events, output_path):
         writer = csv.DictWriter(file, fieldnames=CSV_FIELDNAMES, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(events)
+
+def export_json(events, output_path):
+    with open(output_path, "w") as file:
+        json.dump(
+            [{field: e.get(field) for field in CSV_FIELDNAMES} for e in events],
+            file,
+            indent=2,
+            default=str,
+        )
