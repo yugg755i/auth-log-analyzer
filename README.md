@@ -48,6 +48,7 @@ Log type is auto-detected per line from the syslog program tag (`sshd[pid]:`, `s
 - Self-contained HTML incident report with inline charts, print-optimized for PDF export
 - Optional PDF export (via Playwright) alongside the HTML report
 - Optional CSV and SQLite export
+- Optional JSON export of parsed events
 - Unit-tested parser, detector, scoring, and configuration modules using pytest
 
 ## Report Preview
@@ -139,6 +140,9 @@ loganalyzer logs/auth.log --export-pdf report.pdf
 # also keep a queryable record
 loganalyzer logs/auth.log --export-csv out.csv --export-db
 
+# export parsed events as JSON
+loganalyzer logs/auth.log --export-json out.json
+
 # use a custom configuration
 loganalyzer logs/ --config config/loganalyzer.yaml
 ```
@@ -174,6 +178,21 @@ cache_ttl_hours: 168
 ```
 
 Command-line arguments override configuration values when both are provided.
+
+## Development
+
+Install dev dependencies (pytest, ruff):
+
+```bash
+pip install -e ".[dev]"
+```
+
+Run the test suite and linter — both run in CI on every push:
+
+```bash
+pytest
+ruff check .
+```
 
 ## Project Structure
 
