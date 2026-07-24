@@ -5,17 +5,15 @@
 <title>Incident Investigation Report — {{ ctx.generated_at }}</title>
 <style>
 :root {
-  --bg: #222831;
-  --bg-alt: #282e38;
-  --text: #dfd0b8;
-  --text-muted: #948979;
-  
-  --hi-ip: #efd0b8;
-  --hi-user: #e0f0b8;
-  --hi-danger: #ff8a8a;
-  
-  --border: #bfae95;
-  --border-subtle: #393e46;
+  --bg: #1a1d24;
+  --bg-alt: #21252e;
+  --text: #c7ccd6;
+  --text-muted: #6b7280;
+  --hi-ip: #5eb3d6;
+  --hi-user: #9fd67a;
+  --hi-danger: #e5484d;
+  --border: #3d4451;
+  --border-subtle: #2a2f3a;
   
   --mono: "Consolas", "Menlo", monospace;
   --sans: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -176,10 +174,16 @@ header {
 
 section { margin-bottom: 32px; }
 .section-title {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--text-muted);
-  border-bottom: 1px solid var(--border-subtle);
-  padding-bottom: 8px; margin-bottom: 12px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+  border-bottom: none;
+  border-left: 3px solid var(--border);
+  padding: 2px 0 8px 10px;
+  margin-bottom: 12px;
 }
 
 /* Charts and Canvas Layout */
@@ -283,7 +287,7 @@ td.num a:hover { color: var(--text-muted); }
 }
 .v-timeline-event.event-breached .v-timeline-dot { 
   background: var(--hi-danger); 
-  box-shadow: 0 0 0 4px rgba(255, 138, 138, 0.2); 
+  box-shadow: 0 0 0 4px rgba(229, 72, 77, 0.2);
 }
 .v-timeline-event.event-start .v-timeline-dot { background: var(--hi-ip); }
 .v-timeline-event.event-active .v-timeline-dot { background: var(--text-muted); }
@@ -431,10 +435,10 @@ footer {
           <tr>
             <th>Source</th>
             <th>Format</th>
-            <th>Classification / Threat Type</th>
-            <th>Confidence Score</th>
-            <th>Severity Assessment</th>
-            <th class="num">Cross-Reference</th>
+            <th>Attack Type</th>
+            <th>Score</th>
+            <th>Severity</th>
+            <th class="num">Details</th>
           </tr>
         </thead>
         <tbody>
@@ -549,21 +553,14 @@ footer {
 
   <section>
     <div class="section-title">Geolocation (GeoIP)</div>
-    <div class="table-block">
+    <div class="ip-block">
       {% if ctx.geoip %}
-      <table>
-        <thead><tr><th>IP</th><th>Country</th><th>Region</th><th>City</th></tr></thead>
-        <tbody>
-          {% for ip, g in ctx.geoip.items() %}
-          <tr>
-            <td class="ip">{{ ip }}</td>
-            <td>{{ g.country or "—" }}</td>
-            <td>{{ g.regionName or "—" }}</td>
-            <td>{{ g.city or "—" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+        {% for ip, g in ctx.geoip.items() %}
+        <div class="ip-row">
+          <div class="ip-addr">{{ ip }}</div>
+          <div class="ip-count">{{ [g.city, g.regionName, g.country] | select | join(", ") }}</div>
+        </div>
+        {% endfor %}
       {% else %}
       <div class="empty">GeoIP lookup skipped or returned no results.</div>
       {% endif %}
@@ -602,7 +599,7 @@ footer {
       <div class="narrative">{{ ctx.narratives[key] }}</div>
 
       <table class="checklist">
-        <thead><tr><th>Signal Evaluated</th><th>Detailed Context</th><th class="pts">Points</th></tr></thead>
+        <thead><tr><th>Signal</th><th>Detail</th><th class="pts">Points</th></tr></thead>
         <tbody>
           {% for row in s.checklist %}
           <tr>
@@ -624,10 +621,10 @@ footer {
           <div class="v-timeline-dot"></div>
           <div class="v-timeline-meta">
             <span class="v-timeline-time">{{ t.first_seen }}</span>
-            <span>&middot; INITIAL ACTIVITY RECORDED</span>
+            <span>First seen</span>
           </div>
           <div class="v-timeline-desc">
-            First authentication request observed from this source host. Across the entire analysis window, activity from this host targeted a total of <strong>{{ t.unique_usernames }}</strong> distinct username variants.
+            First request from this host. <strong>{{ t.unique_usernames }}</strong> distinct username(s) targeted over the full window.
           </div>
         </div>
 
@@ -635,11 +632,10 @@ footer {
         <div class="v-timeline-event event-active">
           <div class="v-timeline-dot"></div>
           <div class="v-timeline-meta">
-            <span class="v-timeline-time">Sustained Activity Window</span>
-            <span>&middot; VOLUMETRIC ANALYSIS</span>
+              <span class="v-timeline-time">Failed attempts</span>
           </div>
           <div class="v-timeline-desc">
-            Host initiated a burst sequence containing <strong>{{ t.failed_attempts }}</strong> failed authentication attempts.
+            <strong>{{ t.failed_attempts }}</strong> failed attempts.
             
             {% set points = ctx.timeline_points.get(key, []) %}
             {% if points %}
@@ -659,13 +655,13 @@ footer {
           <div class="v-timeline-dot"></div>
           <div class="v-timeline-meta">
             <span class="v-timeline-time">{{ t.last_seen }}</span>
-            <span>&middot; FINAL ANALYSIS STATUS</span>
+            <span>Last seen</span>
           </div>
           <div class="v-timeline-desc">
             {% if t.breached %}
-            <span style="color: var(--hi-danger); font-weight: bold; text-decoration: underline;">[COMPROMISE]</span> Accepted password/key login recorded at this timestamp following authentication failures.
+            <span style="color: var(--hi-danger); font-weight: bold;">Login accepted</span> after the failures above.
             {% else %}
-            <span style="color: var(--text-muted); font-weight: bold;">[CONTAINED]</span> Threat source activity terminated without recording an accepted login event.
+            <span style="color: var(--text-muted); font-weight: bold;">No login accepted.</span>
             {% endif %}
           </div>
         </div>
@@ -674,7 +670,7 @@ footer {
 
       {% set lines = ctx.evidence.get(key, []) %}
       {% if lines %}
-      <div class="evidence-label">Supporting Evidence: Raw Line Captures</div>
+      <div class="evidence-label">Raw log lines</div>
       <div class="evidence-block">
         {% for line in lines %}<span class="ev-line">{{ line }}</span>{% endfor %}
       </div>
@@ -695,8 +691,8 @@ footer {
 
   window.addEventListener("load", () => {
     window.chartsReady = false;
-    if (hourly.length) drawChart("hourlyChart", hourly.map(d => d.hour.split(" ")[1] || d.hour), hourly.map(d => d.count), "#dfd0b8");
-    if (topIps.length) drawChart("topIpChart", topIps.map(d => d[0]), topIps.map(d => d[1]), "#948979");
+    if (hourly.length) drawChart("hourlyChart", hourly.map(d => d.hour.split(" ")[1] || d.hour), hourly.map(d => d.count), "#c7ccd6");
+    if (topIps.length) drawChart("topIpChart", topIps.map(d => d[0]), topIps.map(d => d[1]), "#6b7280");
     window.chartsReady = true;
   });
 
@@ -747,7 +743,7 @@ footer {
       const max = Math.max(...displayValues, 1);
 
       ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = "#393e46";
+      ctx.strokeStyle = "#2a2f3a";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(padL, padT);
@@ -766,13 +762,13 @@ footer {
         ctx.fillStyle = color;
         ctx.fillRect(x, y, barW, barH);
 
-        ctx.fillStyle = "#dfd0b8";
+        ctx.fillStyle = "#c7ccd6";
         ctx.font = "10px Consolas, Menlo, monospace";
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
         ctx.fillText(displayLabels[i], padL - 8, y + barH / 2);
 
-        ctx.fillStyle = "#948979";
+        ctx.fillStyle = "#6b7280";
         ctx.font = "10px Consolas, Menlo, monospace";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
