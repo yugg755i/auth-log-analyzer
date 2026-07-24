@@ -11,7 +11,11 @@ from log_analyzer.detector import (
     top_ips,
 )
 from log_analyzer.enrichment import is_malicious
-from log_analyzer.report.scoring import build_executive_summary, build_narrative, score_ip
+from log_analyzer.report.scoring import (
+    build_executive_summary,
+    build_narrative,
+    score_ip,
+)
 
 EVIDENCE_LINE_LIMIT = 8
 

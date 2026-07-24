@@ -4,8 +4,12 @@ version = "0.7.0"
 dependencies = ["requests", "python-dotenv", "jinja2", "pyyaml"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "ruff==0.14.0"]
 pdf = ["playwright"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = ["DTZ005", "DTZ007", "DTZ001"]
 
 [project.scripts]
 loganalyzer = "log_analyzer.cli:main"

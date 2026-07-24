@@ -1,5 +1,11 @@
 from log_analyzer.parser import parse_log
-from tests.conftest import sshd_line, su_fail_line, su_success_line, sudo_fail_line, sudo_success_line
+from tests.conftest import (
+    sshd_line,
+    su_fail_line,
+    su_success_line,
+    sudo_fail_line,
+    sudo_success_line,
+)
 
 
 def test_parse_log_extracts_sudo_failure(write_log):

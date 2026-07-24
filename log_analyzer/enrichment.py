@@ -1,7 +1,8 @@
 import ipaddress
-from log_analyzer.cache import get_cached, set_cached
 
 import requests
+
+from log_analyzer.cache import get_cached, set_cached
 
 
 def is_public_ip(ip):

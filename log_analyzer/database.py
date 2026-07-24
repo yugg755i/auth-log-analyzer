@@ -1,6 +1,6 @@
 import csv
-import sqlite3
 import json
+import sqlite3
 
 DEFAULT_DB_PATH = "data/alerts.db"
 

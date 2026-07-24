@@ -8,15 +8,16 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from log_analyzer import database
+from log_analyzer.cache import load_cache, save_cache
 from log_analyzer.config import ConfigError, load_config
 from log_analyzer.detector import filter_by_time
 from log_analyzer.enrichment import enrich_ips
+from log_analyzer.geoip import enrich_geoip
 from log_analyzer.input_resolver import resolve_log_paths
 from log_analyzer.parser import parse_logs
 from log_analyzer.report.builder import build_report_context
 from log_analyzer.report.renderer import render_report
-from log_analyzer.cache import load_cache, save_cache
-from log_analyzer.geoip import enrich_geoip
+
 
 def parse_date_arg(value):
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):

@@ -1,12 +1,12 @@
 from datetime import datetime
 
 from log_analyzer.detector import (
+    accepted_events,
     build_session_timeline,
     count_ips,
     detect_bruteforce,
     detect_username_enumeration,
     failed_events,
-    accepted_events,
     filter_by_time,
     top_ips,
     unique_usernames_tried,
