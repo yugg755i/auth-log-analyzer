@@ -95,7 +95,7 @@ def _accepted_after_bruteforce(by_log_type, combined_bruteforce, grace_minutes):
             if e["actor"] != actor or e["status"] != "Accepted":
                 continue
             ts = datetime.strptime(e["timestamp"], "%Y-%m-%d %H:%M:%S")
-            if ts <= cutoff:
+            if window_end <= ts <= cutoff:
                 results.append(e)
 
     return results
